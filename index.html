@@ -884,41 +884,35 @@ You will earn 5% of the revenue from every referral you bring through ads!
                 return;
             }
             
-            // 1. Request Action ID from the Server for pre-spin (security check)
-            const preSpinActionId = await requestActionId('preSpin');
-            if (!preSpinActionId) return; // Error message already shown by fetchApi
+            // 1. Request Action ID from the Server ⬅️ تم التفعيل على Spin
+            const spinActionId = await requestActionId('spin');
+            if (!spinActionId) return; // Error message already shown by fetchApi
 
 
-            // 2. Request pre-spin registration (Server checks for banned user and consumes the action ID)
-            const preSpinReqResult = await fetchApi({ 
-                type: 'preSpin',
-                action_id: preSpinActionId // ⬅️ Send Action ID
+            // 2. Request spin attempt registration first (Server checks rate limit, daily limit, and validates Action ID)
+            const spinReqResult = await fetchApi({ 
+                type: 'spin',
+                action_id: spinActionId
             });
 
-            if (!preSpinReqResult.ok) {
+            if (!spinReqResult.ok) {
                 await loadUserData(); 
                 return; 
             }
             
-            // 3. Request Action ID from the Server for the spin result (prize confirmation)
-            const spinResultActionId = await requestActionId('spinResult');
-            if (!spinResultActionId) {
-                Telegram.WebApp.showAlert('🔒 SECURITY ERROR 🔒\n\n[STATUS] Failed to get confirmation token. Please try again.');
-                await loadUserData(); 
-                return;
-            }
-            
-            // 4. Call GigaPub
+            // Update spin count with trusted server value
+            updateState({ spins_today: spinReqResult.data.new_spins_count });
+
+            // 3. Call GigaPub
             window.showGiga()
                 .then(async () => {
                     spinning = true;
                     spinBtn.disabled = true;
                     spinResult.textContent = 'Spinning...'; 
                     
-                    // 5. Request spin result and prize addition (Server runs limits, Rate Limit, and validates Action ID)
+                    // 4. Request spin result and prize addition (No second Action ID needed here, as the 'spin' action consumed the ID)
                     const spinResultRes = await fetchApi({ 
-                        type: 'spinResult',
-                        action_id: spinResultActionId // ⬅️ Send Action ID
+                        type: 'spinResult'
                     });
                     
                     if (spinResultRes.ok) {
@@ -942,13 +936,9 @@ You will earn 5% of the revenue from every referral you bring through ads!
                         setTimeout(async ()=>{
                             canvas.style.transition = 'none'; 
                             
-                            // 6. Update balance and spin count with trusted server values 
-                            updateState({ 
-                                balance: spinResultRes.data.new_balance,
-                                spins_today: spinResultRes.data.new_spins_count
-                            });
-                            
-                            spinResult.textContent = `🎉 REWARD GRANTED 🎉\n\n[WINNER] You won ${finalPrize} SHIB!`;
+                            // 5. Update balance with trusted server value 
+                            updateState({ balance: spinResultRes.data.new_balance });
+                            spinResult.textContent = `\n\n[WINNER] You won ${finalPrize} SHIB!`;
                             
                             await loadUserData(); 
                             
@@ -1013,7 +1003,7 @@ You will earn 5% of the revenue from every referral you bring through ads!
             tableHTML += '<tbody>';
 
             withdrawalHistory.forEach(record => {
-                const statusClass = record.status === 'pending' ? 'status-pending' : 'status-completed';
+                const statusClass = record.status === 'Pending' ? 'status-pending' : 'status-completed';
                 tableHTML += `
                     <tr>
                         <td>${record.date}</td>
