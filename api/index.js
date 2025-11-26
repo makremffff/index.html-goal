@@ -170,7 +170,7 @@ function generateStrongId() {
 
 /**
  * HANDLER: type: "generateActionId"
- * The client requests an action ID before starting a critical action (ad/spin/withdraw).
+ * The client requests an action ID before starting a critical action (ad/spin).
  */
 async function handleGenerateActionId(req, res, body) {
     const { user_id, action_type } = body;
@@ -511,53 +511,21 @@ async function handleCommission(req, res, body) {
 }
 
 /**
- * 4) type: "preSpin" (New: called to request action ID before showing the ad/spin)
+ * 4) type: "spin" (called to register the spin before showing the ad)
  */
-async function handlePreSpin(req, res, body) {
+async function handleSpin(req, res, body) {
     const { user_id, action_id } = body;
     const id = parseInt(user_id);
     
     // 1. Check and Consume Action ID (Security Check)
-    if (!await validateAndUseActionId(res, id, action_id, 'preSpin')) return;
+    if (!await validateAndUseActionId(res, id, action_id, 'spin')) return;
 
     try {
-        // 2. Fetch current user data
-        const users = await supabaseFetch('users', 'GET', null, `?id=eq.${id}&select=is_banned`);
-        if (!Array.isArray(users) || users.length === 0) {
-            return sendError(res, 'User not found.', 404);
-        }
-        
-        // ⚠️ Banned Check
-        if (users[0].is_banned) {
-            return sendError(res, 'User is banned.', 403);
-        }
+        // 2. Check and reset daily limits before proceeding
+        await resetDailyLimitsIfExpired(id);
 
-        // 3. Success (Action ID consumed, ready to show ad)
-        sendSuccess(res, { message: "Pre-spin action secured." });
-
-    } catch (error) {
-        console.error('PreSpin failed:', error.message);
-        sendError(res, `Failed to secure pre-spin: ${error.message}`, 500);
-    }
-}
-
-
-/**
- * 5) type: "spinResult" (Now requires Action ID and handles limits)
- */
-async function handleSpinResult(req, res, body) {
-    const { user_id, action_id } = body; // ⬅️ NOW REQUIRES action_id
-    const id = parseInt(user_id);
-    
-    // 1. Check and Consume Action ID (Security Check)
-    if (!await validateAndUseActionId(res, id, action_id, 'preSpin')) return; // Uses the 'preSpin' ID
-    
-    // 2. Check and reset daily limits before proceeding
-    await resetDailyLimitsIfExpired(id);
-
-    try {
         // 3. Fetch current user data
-        const users = await supabaseFetch('users', 'GET', null, `?id=eq.${id}&select=balance,spins_today,is_banned`);
+        const users = await supabaseFetch('users', 'GET', null, `?id=eq.${id}&select=spins_today,is_banned`);
         if (!Array.isArray(users) || users.length === 0) {
             return sendError(res, 'User not found.', 404);
         }
@@ -569,7 +537,7 @@ async function handleSpinResult(req, res, body) {
             return sendError(res, 'User is banned.', 403);
         }
         
-        // 4. Rate Limit Check 
+        // 4. Rate Limit Check (NEW)
         const rateLimitResult = await checkRateLimit(id);
         if (!rateLimitResult.ok) {
             return sendError(res, rateLimitResult.message, 429); 
@@ -579,34 +547,65 @@ async function handleSpinResult(req, res, body) {
         if (user.spins_today >= DAILY_MAX_SPINS) {
             return sendError(res, `Daily spin limit (${DAILY_MAX_SPINS}) reached.`, 403);
         }
-        
-        // --- All checks passed: Process Spin Result ---
 
-        const { prize, prizeIndex } = calculateRandomSpinPrize();
+        // 6. Calculate new values
         const newSpinsCount = user.spins_today + 1;
-        const newBalance = user.balance + prize;
 
-        // 6. Update user record: balance, spins_today, and last_activity
+        // 7. Update user record: spins_today, and last_activity
         await supabaseFetch('users', 'PATCH',
           { 
-              balance: newBalance,
               spins_today: newSpinsCount,
               last_activity: new Date().toISOString()
           },
           `?id=eq.${id}`);
+          
+        // 8. Success
+        sendSuccess(res, { new_spins_count: newSpinsCount });
 
-        // 7. Save to spin_results
+    } catch (error) {
+        console.error('Spin failed:', error.message);
+        sendError(res, `Failed to process spin: ${error.message}`, 500);
+    }
+}
+
+/**
+ * 5) type: "spinResult" (no Action ID needed here as 'spin' was the critical step)
+ */
+async function handleSpinResult(req, res, body) {
+    const { user_id } = body;
+    const id = parseInt(user_id);
+    
+    // NOTE: The 'spin' action already consumed a unique ID and incremented the spin count.
+    // This action only calculates the prize and updates the balance.
+
+    const { prize, prizeIndex } = calculateRandomSpinPrize();
+
+    try {
+        // 1. Fetch current user balance and banned status
+        const users = await supabaseFetch('users', 'GET', null, `?id=eq.${id}&select=balance,is_banned`);
+        if (!Array.isArray(users) || users.length === 0) {
+            return sendError(res, 'User not found.', 404);
+        }
+
+        // ⚠️ Banned Check
+        if (users[0].is_banned) {
+            return sendError(res, 'User is banned.', 403);
+        }
+
+        const newBalance = users[0].balance + prize;
+
+        // 2. Update user record: balance 
+        await supabaseFetch('users', 'PATCH',
+          { balance: newBalance },
+          `?id=eq.${id}`);
+
+        // 3. Save to spin_results
         await supabaseFetch('spin_results', 'POST',
           { user_id: id, prize },
           '?select=user_id');
 
-        // 8. Return the actual, server-calculated prize and index
-        sendSuccess(res, { 
-            new_balance: newBalance, 
-            actual_prize: prize, 
-            prize_index: prizeIndex,
-            new_spins_count: newSpinsCount
-        });
+        // 4. Return the actual, server-calculated prize and index
+        sendSuccess(res, { new_balance: newBalance, actual_prize: prize, prize_index: prizeIndex });
 
     } catch (error) {
         console.error('Spin result failed:', error.message);
@@ -736,16 +735,16 @@ module.exports = async (req, res) => {
     case 'commission':
       await handleCommission(req, res, body);
       break;
-    case 'preSpin': // ⬅️ NEW name for spin: only secures the Action ID
-      await handlePreSpin(req, res, body);
+    case 'spin':
+      await handleSpin(req, res, body);
       break;
-    case 'spinResult': // ⬅️ NOW includes all security checks (Action ID, limits)
+    case 'spinResult':
       await handleSpinResult(req, res, body);
       break;
     case 'withdraw':
       await handleWithdraw(req, res, body);
       break;
-    case 'generateActionId': 
+    case 'generateActionId': // ⬅️ NEW Handler
       await handleGenerateActionId(req, res, body);
       break;
     default:
