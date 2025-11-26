@@ -170,7 +170,7 @@ function generateStrongId() {
 
 /**
  * HANDLER: type: "generateActionId"
- * The client requests an action ID before starting a critical action (ad/spin).
+ * The client requests an action ID before starting a critical action (ad/spin/withdraw).
  */
 async function handleGenerateActionId(req, res, body) {
     const { user_id, action_type } = body;
@@ -433,7 +433,8 @@ async function handleWatchAd(req, res, body) {
         // 4. Rate Limit Check (NEW)
         const rateLimitResult = await checkRateLimit(id);
         if (!rateLimitResult.ok) {
-            // NOTE: Action ID was already consumed. For a rate limit error, the client should get a new Action ID.
+            // Re-insert the action ID if rate limit is hit, so client can retry
+            // NOTE: For simplicity, we just send the error and the client will request a new one
             return sendError(res, rateLimitResult.message, 429); 
         }
 
@@ -510,21 +511,53 @@ async function handleCommission(req, res, body) {
 }
 
 /**
- * 4) type: "spin" (called to register the spin before showing the ad)
+ * 4) type: "preSpin" (New: called to request action ID before showing the ad/spin)
  */
-async function handleSpin(req, res, body) {
+async function handlePreSpin(req, res, body) {
     const { user_id, action_id } = body;
     const id = parseInt(user_id);
     
     // 1. Check and Consume Action ID (Security Check)
-    if (!await validateAndUseActionId(res, id, action_id, 'spin')) return;
+    if (!await validateAndUseActionId(res, id, action_id, 'preSpin')) return;
 
     try {
-        // 2. Check and reset daily limits before proceeding
-        await resetDailyLimitsIfExpired(id);
+        // 2. Fetch current user data
+        const users = await supabaseFetch('users', 'GET', null, `?id=eq.${id}&select=is_banned`);
+        if (!Array.isArray(users) || users.length === 0) {
+            return sendError(res, 'User not found.', 404);
+        }
+        
+        // ⚠️ Banned Check
+        if (users[0].is_banned) {
+            return sendError(res, 'User is banned.', 403);
+        }
 
+        // 3. Success (Action ID consumed, ready to show ad)
+        sendSuccess(res, { message: "Pre-spin action secured." });
+
+    } catch (error) {
+        console.error('PreSpin failed:', error.message);
+        sendError(res, `Failed to secure pre-spin: ${error.message}`, 500);
+    }
+}
+
+
+/**
+ * 5) type: "spinResult" (Now requires Action ID and handles limits)
+ */
+async function handleSpinResult(req, res, body) {
+    const { user_id, action_id } = body; // ⬅️ NOW REQUIRES action_id
+    const id = parseInt(user_id);
+    
+    // 1. Check and Consume Action ID (Security Check)
+    if (!await validateAndUseActionId(res, id, action_id, 'preSpin')) return; // Uses the 'preSpin' ID
+    
+    // 2. Check and reset daily limits before proceeding
+    await resetDailyLimitsIfExpired(id);
+
+    try {
         // 3. Fetch current user data
-        const users = await supabaseFetch('users', 'GET', null, `?id=eq.${id}&select=spins_today,is_banned`);
+        const users = await supabaseFetch('users', 'GET', null, `?id=eq.${id}&select=balance,spins_today,is_banned`);
         if (!Array.isArray(users) || users.length === 0) {
             return sendError(res, 'User not found.', 404);
         }
@@ -536,10 +569,9 @@ async function handleSpin(req, res, body) {
             return sendError(res, 'User is banned.', 403);
         }
         
-        // 4. Rate Limit Check (NEW)
+        // 4. Rate Limit Check 
         const rateLimitResult = await checkRateLimit(id);
         if (!rateLimitResult.ok) {
-            // NOTE: Action ID was already consumed. For a rate limit error, the client should get a new Action ID.
             return sendError(res, rateLimitResult.message, 429); 
         }
 
@@ -547,94 +579,34 @@ async function handleSpin(req, res, body) {
         if (user.spins_today >= DAILY_MAX_SPINS) {
             return sendError(res, `Daily spin limit (${DAILY_MAX_SPINS}) reached.`, 403);
         }
+        
+        // --- All checks passed: Process Spin Result ---
 
-        // 6. Calculate new values
+        const { prize, prizeIndex } = calculateRandomSpinPrize();
         const newSpinsCount = user.spins_today + 1;
-        const { prize, prizeIndex } = calculateRandomSpinPrize(); // ⬅️ Calculate prize here
+        const newBalance = user.balance + prize;
 
-        // 7. Update user record: spins_today, and last_activity
+        // 6. Update user record: balance, spins_today, and last_activity
         await supabaseFetch('users', 'PATCH',
           { 
+              balance: newBalance,
               spins_today: newSpinsCount,
               last_activity: new Date().toISOString()
           },
           `?id=eq.${id}`);
 
-        // 8. **SECURITY IMPROVEMENT: Save the prize to a temporary table**
-        await supabaseFetch('temp_spin_results', 'POST',
-            { 
-                user_id: id, 
-                prize_amount: prize, 
-                prize_index: prizeIndex 
-            },
-            '?select=user_id');
-          
-        // 9. Success: Return prize details to the client for animation, but NOT for balance update
-        sendSuccess(res, { 
-            new_spins_count: newSpinsCount, 
-            actual_prize: prize, 
-            prize_index: prizeIndex 
-        });
-
-    } catch (error) {
-        console.error('Spin failed:', error.message);
-        sendError(res, `Failed to process spin: ${error.message}`, 500);
-    }
-}
-
-/**
- * 5) type: "spinResult" (consumes the saved prize and updates balance)
- */
-async function handleSpinResult(req, res, body) {
-    const { user_id } = body;
-    const id = parseInt(user_id);
-    
-    // 1. Fetch and Consume the saved prize (Security Check for spinResult)
-    let tempResults;
-    try {
-        const query = `?user_id=eq.${id}&select=id,prize_amount,prize_index&order=created_at.desc&limit=1`;
-        tempResults = await supabaseFetch('temp_spin_results', 'GET', null, query);
-    
-        if (!Array.isArray(tempResults) || tempResults.length === 0) {
-            return sendError(res, 'Spin Result Not Found (TSR_NF).', 404);
-        }
-        
-        // Delete the record immediately to prevent reuse (The actual consumption)
-        await supabaseFetch('temp_spin_results', 'DELETE', null, `?id=eq.${tempResults[0].id}`);
-    
-    } catch (error) {
-        console.error('Error fetching or deleting temp_spin_results:', error.message);
-        return sendError(res, 'Failed to validate spin result.', 500);
-    }
-    
-    const { prize_amount: prize } = tempResults[0];
-
-    try {
-        // 2. Fetch current user balance and banned status
-        const users = await supabaseFetch('users', 'GET', null, `?id=eq.${id}&select=balance,is_banned`);
-        if (!Array.isArray(users) || users.length === 0) {
-            return sendError(res, 'User not found.', 404);
-        }
-
-        // ⚠️ Banned Check
-        if (users[0].is_banned) {
-            return sendError(res, 'User is banned.', 403);
-        }
-
-        const newBalance = users[0].balance + prize;
-
-        // 3. Update user record: balance 
-        await supabaseFetch('users', 'PATCH',
-          { balance: newBalance },
-          `?id=eq.${id}`);
-
-        // 4. Save to spin_results history
+        // 7. Save to spin_results
         await supabaseFetch('spin_results', 'POST',
           { user_id: id, prize },
           '?select=user_id');
 
-        // 5. Return the actual, server-calculated prize and index
-        sendSuccess(res, { new_balance: newBalance, actual_prize: prize });
+        // 8. Return the actual, server-calculated prize and index
+        sendSuccess(res, { 
+            new_balance: newBalance, 
+            actual_prize: prize, 
+            prize_index: prizeIndex,
+            new_spins_count: newSpinsCount
+        });
 
     } catch (error) {
         console.error('Spin result failed:', error.message);
@@ -764,16 +736,16 @@ module.exports = async (req, res) => {
     case 'commission':
       await handleCommission(req, res, body);
       break;
-    case 'spin':
-      await handleSpin(req, res, body);
+    case 'preSpin': // ⬅️ NEW name for spin: only secures the Action ID
+      await handlePreSpin(req, res, body);
       break;
-    case 'spinResult':
+    case 'spinResult': // ⬅️ NOW includes all security checks (Action ID, limits)
       await handleSpinResult(req, res, body);
       break;
     case 'withdraw':
       await handleWithdraw(req, res, body);
       break;
-    case 'generateActionId': // ⬅️ NEW Handler
+    case 'generateActionId': 
       await handleGenerateActionId(req, res, body);
       break;
     default:
