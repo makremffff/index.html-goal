@@ -337,11 +337,11 @@
             z-index: 2;
         }
         
-        .sector-0 { background: #FFD700; transform: rotate(0deg) skewY(-36deg); }
-        .sector-1 { background: #FF4500; transform: rotate(72deg) skewY(-36deg); }
-        .sector-2 { background: #00FF7F; transform: rotate(144deg) skewY(-36deg); }
-        .sector-3 { background: #4169E1; transform: rotate(216deg) skewY(-36deg); }
-        .sector-4 { background: #FFD700; transform: rotate(288deg) skewY(-36deg); }
+        .sector-0 { background: #FFD700; transform: rotate(0deg) skewY(-54deg); }
+        .sector-1 { background: #FF4500; transform: rotate(72deg) skewY(-54deg); }
+        .sector-2 { background: #00FF7F; transform: rotate(144deg) skewY(-54deg); }
+        .sector-3 { background: #4169E1; transform: rotate(216deg) skewY(-54deg); }
+        .sector-4 { background: #FFD700; transform: rotate(288deg) skewY(-54deg); }
 
         .wheel-center {
             position: absolute;
@@ -714,6 +714,7 @@
 
             if (!user) {
                 Telegram.WebApp.showAlert('❌ INIT ERROR ❌\\n\\n[STATUS] Could not retrieve user data from Telegram.');
+                document.getElementById('loadingScreen').classList.add('hidden'); // <-- FIX: Hide loading screen on immediate failure
                 return;
             }
 
@@ -731,6 +732,7 @@
             if (!actionId) {
                 // Cannot proceed if Action ID fails
                 Telegram.WebApp.showAlert('❌ INITIALIZATION FAILED ❌\\n\\n[STATUS] Failed to obtain security token for registration. Please relaunch the app.');
+                document.getElementById('loadingScreen').classList.add('hidden'); // <-- FIX: Hide loading screen on Action ID failure
                 return;
             }
 
@@ -742,8 +744,8 @@
             });
             
             if (!registrationResult.ok) {
-                Telegram.WebApp.showAlert(`❌ REGISTRATION ERROR ❌\\n\\n[STATUS] Failed to register user: ${registrationResult.data.error}`);
-                // If banned, loadUserData will handle the UI
+                // Error handled in fetchApi. loadUserData will still attempt to fetch
+                // the user's data (if they exist) which is important.
             }
 
             // 3. Load all user data and display the app
