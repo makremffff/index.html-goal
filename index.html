@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHIB Ads WebApp</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap'); 
+
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Vazirmatn', Arial, Helvetica, sans-serif;overflow:hidden;background: #0d0c1d;}
+        
+        .app-screen {
+            position: fixed;
+            inset: 0;
+            background: url('img.png') no-repeat center center;
+            background-size: cover;
+            transition: opacity .5s ease-in;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none; 
+            z-index: 10; 
+        }
+        .app-screen.visible {
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 20; 
+        }
+
+        /* Loading Screen - Neon enhancements */
+        .loading-screen{
+            position:fixed;inset:0;
+            background: #0d0c1d;
+            display:flex;flex-direction:column;justify-content:center;align-items:center;
+            z-index:9999;transition:opacity .5s ease-out;
+        }
+        .loading-screen.hidden{opacity:0;pointer-events:none}
+        .loading-content{text-align:center;color:#fff}
+        .progress-container{
+            width:300px;height:12px;background:rgba(255,255,255,.05);
+            border-radius:10px;overflow:hidden;margin:2.5rem 0;
+            box-shadow:0 0 15px rgba(0,255,255,0.4);
+            border:2px solid #00ffff;
+        }
+        .progress-bar{
+            height:100%;
+            background:linear-gradient(90deg, #00ffff 0%, #00bfff 100%);
+            border-radius:8px;width:0;transition:width .4s ease;position:relative;overflow:hidden;
+        }
+        .progress-bar::after{content:'';position:absolute;top:0;left:0;bottom:0;right:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);animation:shimmer 1.5s infinite}
+        @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+        .percentage{
+            font-size: 2.5rem; 
+            font-family:'Orbitron', sans-serif; 
+            color:#fff;margin-top:1rem;
+            text-shadow:0 0 10px #00ffff, 0 0 20px rgba(0,255,255,0.8);
+            letter-spacing: 2px;
+        }
+        .loading-text{
+            font-size:1.2rem;color:rgba(255,255,255,.9);margin-top:1rem;text-shadow:0 1px 2px rgba(0,0,0,.5);
+            animation: pulse 1.5s infinite alternate;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.7; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+
+        /* Main Screen */
+        .main-screen{
+            background-color: #f0f0f0; 
+        }
+        
+        .main-content{flex:1;display:flex;justify-content:center;align-items:center}
+        
+        /* User Circle */
+        .user-circle{
+            position:absolute;top:20px;left:20px;width:70px;height:70px;border:2px dashed #ccc;
+            border-radius:50%;display:flex;flex-direction:column;justify-content:center;
+            align-items:center;cursor:pointer;transition:all .3s ease;z-index:100;overflow:hidden
+        }
+        .user-circle:hover{border-color:#4a90e2;background:rgba(74,144,226,.05)}
+        .user-circle img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:none}
+        .user-circle .placeholder{color:#999;font-size:12px;text-align:center}
+        
+        .user-username{
+            position: absolute;
+            top: 95px;
+            left: 20px;
+            width: 70px;
+            font-size:13px;color:#555;white-space:nowrap;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .user-id{
+            position: absolute;
+            top: 115px;
+            left: 20px;
+            width: 70px;
+            font-size:11px;color:#888;white-space:nowrap;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .balance{position:absolute;top:20px;right:20px;background:#fff;border:1px solid #ff5a5a;border-radius:12px;padding:8px 12px;font-family:'Courier New',monospace;font-size:16px;color:#ff2a2a;text-shadow:0 0 2px #ffbbbb;letter-spacing:1px;z-index:101;box-shadow:0 4px 6px rgba(0,0,0,.05)}
+        
+        /* Shared Progress Containers */
+        .progress-group-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 90%;
+            max-width: 300px;
+            z-index: 102;
+        }
+        .daily-progress-container, .spin-progress-container {
+            background: #fff;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.1);
+            text-align: center;
+            border-left: 5px solid #4a90e2; 
+        }
+        .spin-progress-container {
+            border-left: 5px solid #ff8c00; 
+        }
+        .daily-progress-text, .spin-progress-text {font-size:14px;color:#333;margin-bottom:4px; font-weight: bold;}
+        .daily-progress-bar, .spin-progress-bar {width:100%;height:12px;background:rgba(0,0,0,.1);border-radius:10px;overflow:hidden;margin-top:6px}
+        .daily-progress-fill {height:100%;background:linear-gradient(90deg,#00f2fe,#4facfe);border-radius:10px;width:0%;transition:width .4s ease}
+        .spin-progress-fill {height:100%;background:linear-gradient(90deg,#ff8c00, #ff4500);border-radius:10px;width:0%;transition:width .4s ease}
+
+        /* Button Adjustments */
+        .button-container{
+            position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
+            display:flex;gap:10px;
+            background:rgba(240,240,240,.9);padding:15px 15px;
+            border-radius:20px;box-shadow:0 4px 15px rgba(0,0,0,.1);backdrop-filter:blur(10px);
+            width: 90%;
+            max-width: 400px;
+        }
+        .nav-button{
+            position:relative;background:linear-gradient(145deg,#4a90e2,#357abd);color:#fff;border:none;padding:10px 5px;
+            border-radius:10px;font-size:14px;font-weight:bold;cursor:pointer;transition:all .1s ease;
+            flex-grow: 1;
+            min-width: auto;
+            text-transform:uppercase;letter-spacing:.5px;box-shadow:0 5px 0 #2c5aa0,0 8px 12px rgba(0,0,0,.15);transform:translateY(0);
+            text-align: center;
+        }
+        .nav-button:hover{transform:translateY(-1px);box-shadow:0 6px 0 #2c5aa0,0 10px 15px rgba(0,0,0,.2)}
+        .nav-button:active{transform:translateY(2px);box-shadow:0 3px 0 #2c5aa0,0 5px 8px rgba(0,0,0,.15)}
+        .nav-button span{display:block;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+
+        /* ===== Spin Screen ===== */
+        .spin-screen{
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            transition:opacity .3s ease;
+        }
+        #wheelBox{position:relative;margin-bottom:25px}
+        #wheelCanvas{
+            border-radius:50%;
+            box-shadow:0 0 0 8px #eee, 0 8px 30px rgba(0,0,0,.3); 
+            background-color: #fff; 
+            border: 1px solid #ccc; 
+        }
+        .arrow{
+            position:absolute;top:-16px;left:50%;transform:translateX(-50%);
+            width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;
+            border-top:28px solid #ff3366;filter:drop-shadow(0 3px 2px rgba(0,0,0,.3));z-index:10;
+        }
+        .spin-btn{background:#ff3366;color:#fff;border:none;padding:12px 35px;border-radius:30px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 6px 0 #cc2950;transition:all .1s ease}
+        .spin-btn:active{transform:translateY(3px);box-shadow:0 3px 0 #cc2950}
+        .spin-result{margin-top:18px;font-size:18px;color:#333}
+        .spin-back{margin-top:25px;background:#6c757d;color:#fff;border:none;padding:10px 25px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 0 #5a6268}
+        .spin-back:active{transform:translateY(2px);box-shadow:0 2px 0 #5a6268}
+
+        /* ===== Withdraw Screen ===== */
+        .withdraw-screen{
+            display:flex;flex-direction:column;align-items:center;padding:20px 20px;
+            transition:opacity .3s ease;
+            overflow-y: auto;
+        }
+        .withdraw-header{
+            text-align: center;
+            margin-bottom: 25px;
+            width: 100%;
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 15px;
+        }
+        .withdraw-title{font-size:28px;color:#4a90e2;font-weight:700; text-shadow: 0 1px 1px rgba(0,0,0,.1);}
+        .current-balance-info{
+            font-size: 16px;
+            color: #555;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .input-form-container {
+            width: 100%;
+            max-width: 400px;
+            background: #fff;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.1);
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .input-group{
+            width:100%;margin-bottom:15px;
+        }
+        .input-group label{display:block;margin-bottom:8px;font-size:14px;color:#555;font-weight:600;}
+        .input-group input{width:100%;padding:12px 15px;border:1px solid #ddd;border-radius:10px;font-size:16px;transition:border-color .3s ease, box-shadow .3s ease;outline:none;}
+        .input-group input:focus{border-color:#ff8c00;box-shadow:0 0 0 3px rgba(255,140,0,0.2);}
+        .withdraw-buttons{display:flex;gap:15px;margin-top:20px;justify-content: center;}
+        .withdraw-btn{
+            background:linear-gradient(145deg, #28a745, #1e7e34);
+            color:#fff;border:none;padding:12px 30px;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;
+            box-shadow:0 5px 0 #1c6d32;transition:all .1s ease;
+            width: 100%;
+        }
+        .withdraw-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #1c6d32}
+        .back-btn{
+            background:linear-gradient(145deg, #6c757d, #5a6268);
+            color:#fff;border:none;padding:12px 30px;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;
+            box-shadow:0 5px 0 #4e555b;transition:all .1s ease;
+        }
+        .back-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #4e555b}
+        .note{margin-top:15px;font-size:13px;color:#777;max-width:400px;text-align:center;background:rgba(255,140,0,0.1);padding:10px;border-radius:10px;border-left: 5px solid #ff8c00;}
+
+        /* Withdrawal History Table */
+        .history-section{
+            width: 100%;
+            max-width: 400px;
+            margin-top: 30px;
+            padding: 20px 0;
+            border-top: 1px solid #eee;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 15px;
+        }
+        .history-title{
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 700;
+            text-align: center;
+        }
+        .history-table{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .history-table th, .history-table td{
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            text-align: right;
+        }
+        .history-table th{
+            background-color: #f0f4f8;
+            color: #4a90e2;
+            font-weight: 700;
+        }
+        .history-table tr:last-child td{
+            border-bottom: none;
+        }
+        .status-pending{color: #ff8c00; font-weight: bold;}
+        .status-completed{color: #28a745; font-weight: bold;}
+        .no-records{text-align: center; color: #999; padding: 20px;}
+        
+        /* ===== Invite Screen ===== */
+        .invite-screen{
+            display:flex;flex-direction:column;align-items:center;padding:20px 20px;
+            transition:opacity .3s ease;
+            overflow-y: auto;
+        }
+        .invite-header{ 
+            text-align: center;
+            margin-bottom: 25px;
+            width: 100%;
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 15px;
+        }
+        .invite-title{ 
+             font-size:28px;color:#4a90e2;font-weight:700; text-shadow: 0 1px 1px rgba(0,0,0,.1);
+        }
+        .referrals-count-info{
+            font-size: 18px;
+            color: #333;
+            margin-top: 15px;
+            font-weight: bold;
+            padding: 10px 15px;
+            background: #e6f0ff;
+            border-radius: 10px;
+            border: 1px solid #cce0ff;
+            box-shadow: 0 2px 5px rgba(0,0,0,.05);
+            width: 100%;
+        }
+        .invite-buttons{
+            width: 100%;
+            margin-top: 15px;
+        }
+        .copy-link-btn{
+            background:linear-gradient(145deg, #00bfff, #0077b3);
+            color:#fff;border:none;padding:12px 30px;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;
+            box-shadow:0 5px 0 #005a8d;transition:all .1s ease;
+            width: 100%; 
+        }
+        .copy-link-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #005a8d}
+        #referralLinkInput{
+            text-align: center;
+            cursor: pointer;
+            font-weight: 500;
+            color: #4a90e2;
+            background: #f8f8f8;
+            word-break: break-all;
+            white-space: normal;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="percentage" id="percentage">0%</div>
+            <div class="loading-text" id="loadingText">Connecting to SHIB Network...</div>
+        </div>
+    </div>
+    
+    <div class="app-screen main-screen" id="mainScreen">
+        <div class="balance" id="shibBalance">0 SHIB</div>
+        
+        <div class="progress-group-container">
+            <div class="daily-progress-container">
+                <div class="daily-progress-text">Ads today: <span id="adsCount">0</span> / 100</div>
+                <div class="daily-progress-bar">
+                    <div class="daily-progress-fill" id="dailyProgressFill"></div>
+                </div>
+            </div>
+            <div class="spin-progress-container">
+                <div class="spin-progress-text">Spins today: <span id="spinsCount">0</span> / 15</div>
+                <div class="spin-progress-bar">
+                    <div class="spin-progress-fill" id="spinProgressFill"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="user-circle" onclick="circleClick()">
+            <img id="userImage" src="" alt="User">
+            <div class="placeholder">+</div>
+        </div>
+        <div class="user-username" id="userName"></div>
+        <div class="user-id" id="userId"></div>
+        
+        <div class="main-content"></div>
+        
+        <div class="button-container">
+            <button class="nav-button" onclick="watchAds()"><span>Ads</span></button>
+            <button class="nav-button" onclick="showWithdraw()"><span>Withdraw</span></button>
+            <button class="nav-button" onclick="showSpin()"><span>Spin</span></button>
+            <button class="nav-button" onclick="inviteFriends()"><span>Invite</span></button>
+        </div>
+        </div>
+
+    <div class="app-screen spin-screen" id="spinScreen">
+        <div id="wheelBox">
+            <div class="arrow"></div>
+            <canvas id="wheelCanvas" width="280" height="280"></canvas>
+        </div>
+        <button class="spin-btn" id="spinBtn" onclick="startSpin()">SPIN</button>
+        <div class="spin-result" id="spinResult"></div>
+        <button class="spin-back" onclick="hideSpin()">Back</button>
+    </div>
+
+    <div class="app-screen withdraw-screen" id="withdrawScreen">
+        <div class="withdraw-header">
+            <h2 class="withdraw-title">💰 Request SHIB Withdrawal</h2>
+            <div class="current-balance-info">Your Balance: <span id="withdrawBalanceDisplay">0 SHIB</span></div>
+        </div>
+        
+        <div class="input-form-container">
+            <div class="input-group">
+                <label>Binance User ID</label>
+                <input type="text" id="binanceId" placeholder="Enter your Binance ID">
+            </div>
+            <div class="input-group">
+                <label>Amount in SHIB (Min 400)</label>
+                <input type="number" id="withdrawAmount" min="400" value="" placeholder="">
+            </div>
+            <div class="withdraw-buttons">
+                <button class="withdraw-btn" onclick="confirmWithdraw()">Send Request</button>
+            </div>
+        </div>
+        
+        <div class="note">
+            ⚠️ **Important:** The withdrawal will be processed manually within **24 hours**. Ensure your Binance ID is correct.
+        </div>
+        
+        <div class="history-section">
+            <h3 class="history-title">Withdrawal History</h3>
+            <div id="withdrawalHistoryContainer">
+                </div>
+        </div>
+
+        <button class="back-btn" onclick="hideWithdraw()">Back to Main</button>
+    </div>
+
+    <div class="app-screen invite-screen" id="inviteScreen">
+        <div class="invite-header">
+            <h2 class="invite-title">🤝 Invite Friends & Earn SHIB</h2>
+            <div class="referrals-count-info">
+                Your Referrals: <span id="referralsCountDisplay">0</span>
+            </div>
+        </div>
+        
+        <div class="input-form-container">
+            <div class="input-group">
+                <label>Your Referral Link</label>
+                <input type="text" id="referralLinkInput" readonly value="Generating Link...">
+            </div>
+            <div class="invite-buttons">
+                <button class="copy-link-btn" onclick="copyReferralLink()">Copy Link</button>
+            </div>
+        </div>
+        
+        <div class="note">
+       
+🚀 Share this link to invite new users.
+You will earn 5% of the revenue from every referral you bring through ads!
+        </div>
+
+        <button class="back-btn" onclick="hideInvite()">Back to Main</button>
+    </div>
+    <script src="https://ad.gigapub.tech/script?id=3459"></script>
+    <script>
+        /* ===== Loading ===== */
+        const progressBar = document.getElementById('progressBar');
+        const percentageTxt = document.getElementById('percentage');
+        const loadingTxt = document.getElementById('loadingText');
+        const loadingScreen = document.getElementById('loadingScreen');
+        const mainScreen = document.getElementById('mainScreen');
+
+        const loadingTexts = [
+            "Initializing secure connection...","Loading blockchain data...","Verifying user session...",
+            "Compiling reward data...","Preparing UI elements...","Optimizing assets...",
+            "Finalizing application logic...","Ready to launch...","Entering the Matrix..."
+        ];
+        let currentProgress = 0;
+        const loadingSpeed = 100;
+        const loadingInterval = setInterval(()=>{
+            const increment = Math.random()*3+1;
+            currentProgress += increment;
+            if(currentProgress>=100){
+                currentProgress=100; clearInterval(loadingInterval);
+                loadingScreen.classList.add('hidden');
+                initDailyProgress(); 
+            }
+            progressBar.style.width = currentProgress+'%';
+            percentageTxt.textContent = Math.floor(currentProgress)+'%';
+            const idx = Math.min(Math.floor((currentProgress/100)*loadingTexts.length),loadingTexts.length-1);
+            loadingTxt.textContent = loadingTexts[idx];
+        },loadingSpeed);
+
+        document.addEventListener('DOMContentLoaded',()=>{
+            const lc = document.querySelector('.loading-content');
+            lc.style.opacity='0'; lc.style.transform='translateY(30px)';
+            setTimeout(()=>{ lc.style.transition='all .8s ease-out'; lc.style.opacity='1'; lc.style.transform='translateY(0)'; },100);
+        });
+
+        /* ===== Telegram User & Referral Setup ===== */
+        Telegram.WebApp.ready();
+        let tgUser = null;
+        if(Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user){
+            tgUser = Telegram.WebApp.initDataUnsafe.user;
+            const photoUrl = tgUser.photo_url;
+            const userName = tgUser.first_name + (tgUser.last_name? ' '+tgUser.last_name:'');
+            const userId = tgUser.id;
+            const imgEl  = document.getElementById('userImage');
+            const nameEl = document.getElementById('userName');
+            const idEl   = document.getElementById('userId');
+            const placeHolder = document.querySelector('.placeholder');
+            if(photoUrl){
+                imgEl.src = photoUrl;
+                imgEl.style.display = 'block';
+                placeHolder.style.display = 'none';
+            }
+            nameEl.textContent = userName;
+            idEl.textContent   = 'ID: ' + userId;
+        }
+
+        function getRefParam() {
+            let referrerId = null;
+            const REF_PREFIX = 'ref_';
+
+            if (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.start_param) {
+                const startParam = Telegram.WebApp.initDataUnsafe.start_param;
+                if (startParam.startsWith(REF_PREFIX)) {
+                    referrerId = startParam.substring(REF_PREFIX.length);
+                    console.log('Referrer ID from start_param:', referrerId);
+                }
+            } 
+            return referrerId; 
+        }
+
+        let referrerId = getRefParam();
+        const API_URL = '/api'; 
+        
+        // ------------------------------------------------------------------
+        // **fetchApi Function** // ------------------------------------------------------------------
+        async function fetchApi(payload) {
+            if (!tgUser) {
+                Telegram.WebApp.showAlert('🚨 Critical Error: User data not initialized. Please restart the app. [CODE: U_NIL]');
+                return { ok: false, error: 'User not initialized' };
+            }
+
+            const initData = Telegram.WebApp.initData;
+            if (!initData) {
+                Telegram.WebApp.showAlert('🚨 Critical Error: Initialization data is missing. Please restart the app. [CODE: ID_MS]');
+                return { ok: false, error: 'InitData missing' };
+            }
+
+            if (typeof Telegram.WebApp.showProgress === 'function') {
+                Telegram.WebApp.showProgress();
+            }
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ...payload,
+                        user_id: tgUser.id,
+                        initData: initData 
+                    }),
+                });
+
+                if (typeof Telegram.WebApp.hideProgress === 'function') {
+                    Telegram.WebApp.hideProgress();
+                }
+
+                const data = await response.json();
+
+                if (!response.ok || !data.ok) {
+                    const errorMessage = data.error || `Server Error: ${response.status} ${response.statusText}`;
+                    console.error(`API Call failed for type ${payload.type}:`, errorMessage);
+                    let alertMessage = `⚡️ OPERATION FAILED ⚡️\n\n[Reason] ${errorMessage}`;
+                    if (response.status === 429) {
+                         alertMessage = `🛑 RATE LIMIT EXCEEDED 🛑\n\n[ACTION REQUIRED] ${errorMessage}`;
+                    } else if (response.status === 403 && errorMessage.includes('banned')) {
+                         alertMessage = `🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.`;
+                    } else if (errorMessage.includes('limit reached')) {
+                         alertMessage = `⚠️ DAILY LIMIT REACHED ⚠️\n\n[STATUS] You have reached the maximum allowed actions for today.`;
+                    } else if (errorMessage.includes('Server Token') || response.status === 409) {
+                        // ⚠️ IMPROVEMENT: Explicit message for Action ID error
+                        alertMessage = `🔒 SECURITY ERROR 🔒\n\n[STATUS] Invalid or used security token. Please try again normally.`;
+                    } else if (response.status === 408) {
+                        alertMessage = `⏳ TIMEOUT ⏳\n\n[STATUS] Security token expired. Please try again immediately.`;
+                    }
+                    Telegram.WebApp.showAlert(alertMessage);
+                    return { ok: false, error: errorMessage };
+                }
+
+                return data;
+            } catch (error) {
+                if (typeof Telegram.WebApp.hideProgress === 'function') {
+                    Telegram.WebApp.hideProgress();
+                }
+                console.error(`General Fetch Error for type ${payload.type}:`, error.message);
+                Telegram.WebApp.showAlert(`🔌 NETWORK ERROR 🔌\n\n[STATUS] Could not connect to the server. Please check your internet connection.`);
+                return { ok: false, error: error.message };
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // NEW: Function to request Action ID from the Server
+        // ------------------------------------------------------------------
+        async function requestActionId(actionType) {
+            const result = await fetchApi({ 
+                type: 'generateActionId', 
+                action_type: actionType 
+            });
+            
+            if (result.ok) {
+                return result.data.action_id;
+            }
+            return null;
+        }
+
+
+        /* ===== Rewards, Limits, and Anti-Cheat (Limits here are for display only) ===== */
+        const DAILY_MAX = 100;
+        const DAILY_MAX_SPINS = 15;
+        
+        let shibBalance = 0; 
+        let adsWatchedToday = 0;
+        let spinsToday = 0; 
+        let withdrawalHistory = [];
+        let referralsCount = 0; 
+        let isBanned = false; 
+        
+        // Sectors are still needed for drawing the wheel segments and for prize calculation 
+        const sectors = [5, 10, 15, 20, 5]; 
+
+        function updateState(data) {
+            shibBalance = data.balance !== undefined ? data.balance : shibBalance;
+            adsWatchedToday = data.ads_watched_today !== undefined ? data.ads_watched_today : adsWatchedToday;
+            spinsToday = data.spins_today !== undefined ? data.spins_today : spinsToday;
+            referralsCount = data.referrals_count !== undefined ? data.referrals_count : referralsCount;
+            withdrawalHistory = data.withdrawal_history !== undefined ? data.withdrawal_history : withdrawalHistory;
+            isBanned = data.is_banned !== undefined ? data.is_banned : isBanned;
+            updateUI();
+        }
+        
+        async function loadUserData() {
+            if (!tgUser) return;
+            
+            const result = await fetchApi({ type: 'getUserData' }); 
+
+            if (result.ok) {
+                if (result.data.is_banned) {
+                    isBanned = true;
+                    mainScreen.classList.remove('visible');
+                    Telegram.WebApp.showAlert('🚨 ACCOUNT BANNED 🚨\n\n[STATUS] This account has been permanently restricted due to policy violations. Access to the mini app is denied.');
+                    return;
+                }
+                
+                updateState({
+                    balance: result.data.balance,
+                    ads_watched_today: result.data.ads_watched_today,
+                    spins_today: result.data.spins_today,
+                    referrals_count: result.data.referrals_count,
+                    is_banned: false, 
+                    withdrawal_history: (result.data.withdrawal_history || []).map(item => ({
+                        amount: item.amount,
+                        status: item.status,
+                        date: new Date(item.created_at).toLocaleDateString('en-GB') 
+                    }))
+                });
+                
+                mainScreen.classList.add('visible'); 
+
+            }
+        }
+        
+        async function initDailyProgress(){
+            if (!tgUser) return;
+
+            const registerResult = await fetchApi({ 
+                type: 'register',
+                ref_by: referrerId ? referrerId : null 
+            });
+
+            if (registerResult.ok) {
+                await loadUserData(); 
+            }
+        }
+        
+        function updateUI(){
+            document.getElementById('shibBalance').textContent = shibBalance.toLocaleString() + ' SHIB';
+            document.getElementById('withdrawBalanceDisplay').textContent = shibBalance.toLocaleString() + ' SHIB';
+
+            document.getElementById('adsCount').textContent = adsWatchedToday;
+            const adsPercent = Math.min((adsWatchedToday / DAILY_MAX) * 100, 100);
+            document.getElementById('dailyProgressFill').style.width = adsPercent + '%';
+
+            document.getElementById('spinsCount').textContent = spinsToday; 
+            const spinsPercent = Math.min((spinsToday / DAILY_MAX_SPINS) * 100, 100);
+            document.getElementById('spinProgressFill').style.width = spinsPercent + '%';
+
+            document.getElementById('referralsCountDisplay').textContent = referralsCount.toLocaleString();
+            
+            const adButton = document.querySelector('button[onclick="watchAds()"]');
+            if (adButton) {
+                if (isBanned || adsWatchedToday >= DAILY_MAX) {
+                    adButton.disabled = true;
+                    adButton.querySelector('span').textContent = 'LIMIT REACHED';
+                } else {
+                    adButton.disabled = false;
+                    adButton.querySelector('span').textContent = 'Ads';
+                }
+            }
+
+            const spinBtn = document.getElementById('spinBtn');
+            if (spinBtn) {
+                if (isBanned || spinsToday >= DAILY_MAX_SPINS) {
+                    spinBtn.disabled = true;
+                    spinBtn.textContent = `LIMIT REACHED (${spinsToday}/${DAILY_MAX_SPINS})`;
+                } else if (!spinning) {
+                    spinBtn.disabled = false;
+                    spinBtn.textContent = 'SPIN';
+                }
+            }
+        }
+        
+        async function watchAds(){
+            if (isBanned) {
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
+            }
+            
+            // 1. Request Action ID from the Server
+            const actionId = await requestActionId('watchAd');
+            if (!actionId) return; // Error message already shown by fetchApi
+
+            // 2. Show Ad
+            window.showGiga()
+                .then(async () => {
+                    // 3. Request ad reward from the server (Server determines reward, checks limits, and validates Action ID)
+                    const adResult = await fetchApi({
+                        type: 'watchAd',
+                        action_id: actionId // ⬅️ Send Server-Issued ID
+                    });
+
+                    if (adResult.ok) {
+                        const actualReward = adResult.data.actual_reward; 
+                        
+                        // 4. Update UI with trusted server values
+                        updateState({
+                            balance: adResult.data.new_balance,
+                            ads_watched_today: adResult.data.new_ads_count
+                        });
+                        
+                        // 5. Referral commission logic (sends a separate commission request)
+                        if (referrerId) {
+                            fetchApi({
+                                type: 'commission',
+                                referrer_id: referrerId,
+                                referee_id: tgUser.id
+                            }).then(r => {
+                                if (r.ok) { console.log('Commission sent successfully.'); }
+                                else { console.warn('Commission failed to send:', r.error); }
+                            });
+                        }
+                        
+                        let adAlert = `🎉 REWARD GRANTED 🎉\n\n[CREDIT] Ad watched, you earned ${actualReward} SHIB.`;
+                        if(adResult.data.new_ads_count >= DAILY_MAX){
+                            adAlert = `🏆 MISSION ACCOMPLISHED 🏆\n\n[CONGRATS] You completed all ${DAILY_MAX} ads today. Come back tomorrow!`;
+                        }
+                        Telegram.WebApp.showAlert(adAlert);
+                    }
+                })
+                .catch(e => {
+                    console.error("GigaPub Ad failed to show or was dismissed:", e);
+                    Telegram.WebApp.showAlert('❌ AD LOAD FAIL ❌\n\n[ERROR] Failed to load advertisement. Please try again.');
+                });
+        }
+        function circleClick(){ console.log('Circle clicked'); }
+
+        /* ===== Invite Screen Functions ===== */
+        
+        function inviteFriends() {
+            if (isBanned) {
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
+            }
+            mainScreen.classList.remove('visible');
+            document.getElementById('inviteScreen').classList.add('visible');
+            generateReferralLink();
+            loadUserData();
+        }
+
+        function hideInvite(){
+            document.getElementById('inviteScreen').classList.remove('visible');
+            mainScreen.classList.add('visible');
+        }
+        
+        function generateReferralLink() {
+            const referralLinkInput = document.getElementById('referralLinkInput');
+            
+            if (!tgUser) {
+                referralLinkInput.value = 'User data not available.';
+                return;
+            }
+            
+            const userId = tgUser.id;
+            const botPath = "Game_win_usdtBot/earn"; 
+            const inviteLink = `https://t.me/${botPath}?startapp=ref_${userId}`;
+            
+            referralLinkInput.value = inviteLink;
+        }
+
+        function copyReferralLink() {
+            const inviteLink = document.getElementById('referralLinkInput').value;
+            
+            if (inviteLink === 'User data not available.' || inviteLink === 'Generating Link...') {
+                Telegram.WebApp.showAlert('❌ ERROR ❌\n\n[STATUS] The referral link is not ready yet. Please wait a moment.');
+                return;
+            }
+
+            navigator.clipboard.writeText(inviteLink).then(() => {
+                Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                Telegram.WebApp.showAlert('✅ LINK COPIED ✅\n\n[STATUS] Referral link copied to clipboard.');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                Telegram.WebApp.showAlert('❌ COPY FAILED ❌\n\n[ERROR] Failed to copy link. Please try again.');
+            });
+        }
+        /* ===== End of Invite Screen Functions ===== */
+
+
+        /* ===== Spin Wheel (Wheel Code) ===== */
+        const colors = ['#00bfff', '#ff8c00', '#28a745', '#ff4500', '#00f2fe'];
+        const prizeValues = sectors; 
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinResult = document.getElementById('spinResult');
+        const spinBtn    = document.getElementById('spinBtn'); 
+        let spinning = false;
+        let currentAngle = 0;
+
+        function drawWheel() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 130;
+            const sectorCount = sectors.length;
+            const arc = 2 * Math.PI / sectorCount;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            sectors.forEach((val, i) => {
+                const start = i * arc - Math.PI / 2; 
+                
+                // Draw sector background
+                ctx.beginPath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, start, start + arc);
+                ctx.closePath();
+                ctx.fill();
+
+                // Draw sector border
+                ctx.beginPath();
+                ctx.strokeStyle = '#fff'; 
+                ctx.lineWidth = 3;
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, start, start + arc);
+                ctx.closePath();
+                ctx.stroke();
+
+                // 🛠️ تم حذف الكود الذي يرسم النصوص داخل العجلة لتكون فارغة تماماً
+            });
+
+            // Draw Center Circle
+            ctx.beginPath();
+            ctx.fillStyle = '#fff';
+            ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI); 
+            ctx.fill();
+            ctx.strokeStyle = '#ff3366';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Draw Mini Circle inside
+            ctx.beginPath();
+            ctx.fillStyle = '#ff3366';
+            ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI); 
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+        }
+        drawWheel();
+
+        async function startSpin(){
+            if(spinning) return;
+            
+            if (isBanned) {
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
+            }
+            
+            if (spinsToday >= DAILY_MAX_SPINS) {
+                return;
+            }
+            
+            // 1. Request Action ID from the Server ⬅️ تم التفعيل على Spin
+            const spinActionId = await requestActionId('spin');
+            if (!spinActionId) return; // Error message already shown by fetchApi
+
+
+            // 2. Request spin attempt registration first (Server checks rate limit, daily limit, and validates Action ID)
+            const spinReqResult = await fetchApi({ 
+                type: 'spin',
+                action_id: spinActionId
+            });
+
+            if (!spinReqResult.ok) {
+                await loadUserData(); 
+                return; 
+            }
+            
+            // Update spin count with trusted server value
+            updateState({ spins_today: spinReqResult.data.new_spins_count });
+
+            // 3. Call GigaPub
+            window.showGiga()
+                .then(async () => {
+                    spinning = true;
+                    spinBtn.disabled = true;
+                    spinResult.textContent = 'Spinning...'; 
+                    
+                    // 4. Request spin result and prize addition (No second Action ID needed here, as the 'spin' action consumed the ID)
+                    const spinResultRes = await fetchApi({ 
+                        type: 'spinResult'
+                    });
+                    
+                    if (spinResultRes.ok) {
+                        const finalPrize = spinResultRes.data.actual_prize; 
+                        const prizeIndex = spinResultRes.data.prize_index !== undefined ? spinResultRes.data.prize_index : 0; 
+                        
+                        const sectorCount = sectors.length; 
+                        const arc = 2 * Math.PI / sectorCount; 
+                        
+                        const winningAngle = prizeIndex * arc + arc / 2; 
+                        
+                        let rotationToApply = Math.PI / 2 - winningAngle;
+                        
+                        rotationToApply = rotationToApply + (5 * 2 * Math.PI); 
+                        
+                        currentAngle += rotationToApply;
+
+                        canvas.style.transition = 'transform 4s cubic-bezier(0.22,0,0.2,1)';
+                        canvas.style.transform = `rotate(${currentAngle}rad)`;
+                        
+                        setTimeout(async ()=>{
+                            canvas.style.transition = 'none'; 
+                            
+                            // 5. Update balance with trusted server value 
+                            updateState({ balance: spinResultRes.data.new_balance });
+                            spinResult.textContent = `\n\n[WINNER] You won ${finalPrize} SHIB!`;
+                            
+                            await loadUserData(); 
+                            
+                        },4000); 
+
+                    } else {
+                        spinResult.textContent = `❌ ERROR ❌\n\n[STATUS] Error receiving prize. Please try again.`;
+                        await loadUserData(); 
+                    }
+                    
+                    spinning   = false;
+                    updateUI(); 
+                })
+                .catch(e => {
+                    console.error("GigaPub Ad failed to show or was dismissed:", e);
+                    Telegram.WebApp.showAlert('❌ AD LOAD FAIL ❌\n\n[STATUS] Failed to load ad. Spin was not counted. Please try again.');
+                    loadUserData(); 
+                });
+        }
+
+        /* ===== Navigation and Withdraw ===== */
+        function showSpin(){
+            if (isBanned) {
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
+            }
+            mainScreen.classList.remove('visible');
+            document.getElementById('spinScreen').classList.add('visible');
+            loadUserData();
+            updateUI(); 
+        }
+        function hideSpin(){
+            document.getElementById('spinScreen').classList.remove('visible');
+            mainScreen.classList.add('visible');
+        }
+        
+        function showWithdraw(){
+            if (isBanned) {
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
+            }
+            mainScreen.classList.remove('visible');
+            document.getElementById('withdrawScreen').classList.add('visible');
+            loadUserData();
+            displayWithdrawals(); 
+        }
+        
+        function hideWithdraw(){
+            document.getElementById('withdrawScreen').classList.remove('visible');
+            mainScreen.classList.add('visible');
+        }
+        
+        function displayWithdrawals() {
+            const container = document.getElementById('withdrawalHistoryContainer');
+            if (!withdrawalHistory || withdrawalHistory.length === 0) {
+                container.innerHTML = '<div class="no-records">No withdrawal requests found.</div>';
+                return;
+            }
+
+            let tableHTML = '<table class="history-table">';
+            tableHTML += '<thead><tr><th>Date</th><th>Amount (SHIB)</th><th>Status</th></tr></thead>';
+            tableHTML += '<tbody>';
+
+            withdrawalHistory.forEach(record => {
+                const statusClass = record.status === 'Pending' ? 'status-pending' : 'status-completed';
+                tableHTML += `
+                    <tr>
+                        <td>${record.date}</td>
+                        <td>${record.amount.toLocaleString()}</td>
+                        <td><span class="${statusClass}">${record.status}</span></td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+        }
+
+        async function confirmWithdraw(){
+            if (isBanned) {
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
+            }
+            
+            const binanceId = document.getElementById('binanceId').value.trim();
+            const amount = parseInt(document.getElementById('withdrawAmount').value);
+            
+            if(!binanceId || binanceId.length < 8){ Telegram.WebApp.showAlert('⚠️ INVALID INPUT ⚠️\n\n[STATUS] Please enter a valid Binance User ID (minimum 8 digits).'); return; }
+            if(isNaN(amount) || amount < 400){ Telegram.WebApp.showAlert('⚠️ INVALID AMOUNT ⚠️\n\n[STATUS] The minimum withdrawal amount is 400 SHIB.'); return; }
+            if(amount > shibBalance){ Telegram.WebApp.showAlert(`❌ BALANCE ERROR ❌\n\n[STATUS] Insufficient balance. Your current balance is ${shibBalance.toLocaleString()} SHIB.`); return; }
+            
+            // 1. Request Action ID from the Server ⬅️ تم التفعيل على Withdraw
+            const actionId = await requestActionId('withdraw');
+            if (!actionId) return;
+
+            // 2. Send withdrawal request via API
+            const result = await fetchApi({
+                type: 'withdraw',
+                binanceId: binanceId,
+                amount: amount,
+                action_id: actionId // ⬅️ إرسال Action ID
+            });
+
+            if (result.ok) {
+                // 3. Update balance with trusted server value
+                updateState({ balance: result.data.new_balance });
+                
+                // 4. Reload withdrawal history with new data
+                await loadUserData(); 
+                displayWithdrawals(); 
+                
+                Telegram.WebApp.showAlert(`✅ REQUEST SENT ✅\n\n[DETAILS] Binance ID: ${binanceId}\n[AMOUNT] ${amount.toLocaleString()} SHIB\n\nThe transfer will be processed within 24 hours.`);
+            }
+        }
+    </script>
+</body>
+</html>

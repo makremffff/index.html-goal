@@ -1,0 +1,17 @@
+{
+  "name": "shib-ads-backend",
+  "version": "1.0.0",
+  "description": "Backend API for SHIB Ads Telegram Mini App using Supabase REST API.",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js"
+  },
+  "keywords": [
+    "vercel",
+    "supabase",
+    "nodejs",
+    "telegram-mini-app"
+  ],
+  "author": "",
+  "license": "ISC"
+}
