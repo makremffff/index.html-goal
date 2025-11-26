@@ -851,7 +851,7 @@ You will earn 5% of the revenue from every referral you bring through ads!
                 ctx.closePath();
                 ctx.stroke();
 
-                // 🛠️ تم حذف الكود الذي يرسم النصوص داخل العجلة لتكون فارغة تماماً
+                // 🛠️ لا يوجد نص داخل العجلة
             });
 
             // Draw Center Circle
@@ -884,15 +884,14 @@ You will earn 5% of the revenue from every referral you bring through ads!
                 return;
             }
             
-            // 1. Request Action ID from the Server ⬅️ تم التفعيل على Spin
-            const spinActionId = await requestActionId('spin');
-            if (!spinActionId) return; // Error message already shown by fetchApi
+            // 1. Request Action ID from the Server 
+            const spinActionId = await requestActionId('spin'); 
+            if (!spinActionId) return; 
 
-
-            // 2. Request spin attempt registration first (Server checks rate limit, daily limit, and validates Action ID)
+            // 2. Register Spin Attempt (Server checks limits, consumes Action ID, and increments count)
             const spinReqResult = await fetchApi({ 
-                type: 'spin',
-                action_id: spinActionId
+                type: 'registerSpin', // ⬅️ NEW API CALL
+                action_id: spinActionId // ⬅️ Action ID is sent and consumed here
             });
 
             if (!spinReqResult.ok) {
@@ -910,9 +909,10 @@ You will earn 5% of the revenue from every referral you bring through ads!
                     spinBtn.disabled = true;
                     spinResult.textContent = 'Spinning...'; 
                     
-                    // 4. Request spin result and prize addition (No second Action ID needed here, as the 'spin' action consumed the ID)
+                    // 4. Request spin result and prize addition 
                     const spinResultRes = await fetchApi({ 
-                        type: 'spinResult'
+                        type: 'spinResult',
+                        action_id: spinActionId // ⬅️ Action ID is sent again here
                     });
                     
                     if (spinResultRes.ok) {
@@ -1030,7 +1030,7 @@ You will earn 5% of the revenue from every referral you bring through ads!
             if(isNaN(amount) || amount < 400){ Telegram.WebApp.showAlert('⚠️ INVALID AMOUNT ⚠️\n\n[STATUS] The minimum withdrawal amount is 400 SHIB.'); return; }
             if(amount > shibBalance){ Telegram.WebApp.showAlert(`❌ BALANCE ERROR ❌\n\n[STATUS] Insufficient balance. Your current balance is ${shibBalance.toLocaleString()} SHIB.`); return; }
             
-            // 1. Request Action ID from the Server ⬅️ تم التفعيل على Withdraw
+            // 1. Request Action ID from the Server 
             const actionId = await requestActionId('withdraw');
             if (!actionId) return;
 
