@@ -363,71 +363,72 @@
         </div>
         <div class="user-username" id="userName"></div>
         <div class="user-id" id="userId"></div>
-
-        <div class="main-content" id="mainContent">
-            
-        </div>
-
+        
+        <div class="main-content"></div>
+        
         <div class="button-container">
             <button class="nav-button" onclick="watchAds()"><span>Ads</span></button>
             <button class="nav-button" onclick="showWithdraw()"><span>Withdraw</span></button>
             <button class="nav-button" onclick="showSpin()"><span>Spin</span></button>
             <button class="nav-button" onclick="inviteFriends()"><span>Invite</span></button>
         </div>
-    </div>
+        </div>
 
     <div class="app-screen spin-screen" id="spinScreen">
         <div id="wheelBox">
-            <canvas id="wheelCanvas" width="280" height="280"></canvas>
             <div class="arrow"></div>
+            <canvas id="wheelCanvas" width="280" height="280"></canvas>
         </div>
         <button class="spin-btn" id="spinBtn" onclick="startSpin()">SPIN</button>
-        <div class="spin-result" id="spinResult">Spin the wheel to win SHIB!</div>
+        <div class="spin-result" id="spinResult"></div>
         <button class="spin-back" onclick="hideSpin()">Back</button>
     </div>
 
     <div class="app-screen withdraw-screen" id="withdrawScreen">
         <div class="withdraw-header">
-            <div class="withdraw-title">Withdraw SHIB</div>
-            <div class="current-balance-info">Balance: <span id="withdrawBalanceDisplay">0 SHIB</span></div>
+            <h2 class="withdraw-title">💰 Request SHIB Withdrawal</h2>
+            <div class="current-balance-info">Your Balance: <span id="withdrawBalanceDisplay">0 SHIB</span></div>
         </div>
         
         <div class="input-form-container">
             <div class="input-group">
-                <label for="binanceId">Binance Pay ID (8+ digits):</label>
-                <input type="number" id="binanceId" placeholder="Enter your Binance Pay ID">
+                <label>Binance User ID</label>
+                <input type="text" id="binanceId" placeholder="Enter your Binance ID">
             </div>
             <div class="input-group">
-                <label for="amount">Amount (Min 400 SHIB):</label>
-                <input type="number" id="amount" placeholder="Enter amount to withdraw">
+                <label>Amount in SHIB (Min 400)</label>
+                <input type="number" id="withdrawAmount" min="400" value="" placeholder="">
             </div>
             <div class="withdraw-buttons">
-                <button class="withdraw-btn" onclick="requestWithdrawal()">Withdraw</button>
-                <button class="back-btn" onclick="hideWithdraw()">Back</button>
+                <button class="withdraw-btn" onclick="confirmWithdraw()">Send Request</button>
             </div>
         </div>
         
         <div class="note">
-            The minimum withdrawal is 400 SHIB. Requests are processed manually within 24 hours.
+            ⚠️ **Important:** The withdrawal will be processed manually within **24 hours**. Ensure your Binance ID is correct.
         </div>
-
+        
         <div class="history-section">
-            <div class="history-title">Withdrawal History</div>
+            <h3 class="history-title">Withdrawal History</h3>
             <div id="withdrawalHistoryContainer">
                 </div>
         </div>
+
+        <button class="back-btn" onclick="hideWithdraw()">Back to Main</button>
     </div>
 
     <div class="app-screen invite-screen" id="inviteScreen">
         <div class="invite-header">
-            <div class="invite-title">Invite Friends</div>
-            <div class="referrals-count-info">Total Referrals: <span id="referralsCountDisplay">0</span></div>
+            <h2 class="invite-title">🤝 Invite Friends & Earn SHIB</h2>
+            <div class="referrals-count-info">
+                Your Referrals: <span id="referralsCountDisplay">0</span>
+            </div>
         </div>
-
+        
         <div class="input-form-container">
-             <div class="input-group">
-                <label for="referralLinkInput">Your Referral Link (Click to Copy):</label>
-                <input type="text" id="referralLinkInput" readonly value="Generating Link..." onclick="copyReferralLink()">
+            <div class="input-group">
+                <label>Your Referral Link</label>
+                <input type="text" id="referralLinkInput" readonly value="Generating Link...">
             </div>
             <div class="invite-buttons">
                 <button class="copy-link-btn" onclick="copyReferralLink()">Copy Link</button>
@@ -435,124 +436,116 @@
         </div>
         
         <div class="note">
-            Earn 5% commission on every SHIB your referrals earn from watching Ads!
+       
+🚀 Share this link to invite new users.
+You will earn 5% of the revenue from every referral you bring through ads!
         </div>
 
         <button class="back-btn" onclick="hideInvite()">Back to Main</button>
     </div>
-
+    <script src="https://ad.gigapub.tech/script?id=3459"></script>
     <script>
-        const API_ENDPOINT = 'YOUR_VERCEL_APP_URL/api/index'; // ⚠️ REMINDER: Update this URL
-
-        /* ===== Loading Screen Logic ===== */
-        const loadingScreen = document.getElementById('loadingScreen');
+        /* ===== Loading ===== */
         const progressBar = document.getElementById('progressBar');
         const percentageTxt = document.getElementById('percentage');
         const loadingTxt = document.getElementById('loadingText');
+        const loadingScreen = document.getElementById('loadingScreen');
         const mainScreen = document.getElementById('mainScreen');
+
         const loadingTexts = [
-            "Initializing secure connection...",
-            "Loading blockchain data...",
-            "Verifying user session...",
-            "Compiling reward data...",
-            "Preparing UI elements...",
-            "Optimizing assets...",
-            "Finalizing application logic...",
-            "Ready to launch...",
-            "Entering the Matrix..."
+            "Initializing secure connection...","Loading blockchain data...","Verifying user session...",
+            "Compiling reward data...","Preparing UI elements...","Optimizing assets...",
+            "Finalizing application logic...","Ready to launch...","Entering the Matrix..."
         ];
         let currentProgress = 0;
         const loadingSpeed = 100;
-
         const loadingInterval = setInterval(()=>{
-            const increment = Math.random() * 3 + 1;
+            const increment = Math.random()*3+1;
             currentProgress += increment;
-
-            if (currentProgress >= 100) {
-                currentProgress = 100;
-                clearInterval(loadingInterval);
+            if(currentProgress>=100){
+                currentProgress=100; clearInterval(loadingInterval);
                 loadingScreen.classList.add('hidden');
-                initDailyProgress();
+                initDailyProgress(); 
             }
-
-            progressBar.style.width = currentProgress + '%';
-            percentageTxt.textContent = Math.floor(currentProgress) + '%';
-
-            const idx = Math.min(Math.floor((currentProgress / 100) * loadingTexts.length), loadingTexts.length - 1);
+            progressBar.style.width = currentProgress+'%';
+            percentageTxt.textContent = Math.floor(currentProgress)+'%';
+            const idx = Math.min(Math.floor((currentProgress/100)*loadingTexts.length),loadingTexts.length-1);
             loadingTxt.textContent = loadingTexts[idx];
-        }, loadingSpeed);
+        },loadingSpeed);
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded',()=>{
             const lc = document.querySelector('.loading-content');
-            lc.style.opacity = '0';
-            lc.style.transform = 'translateY(30px)';
-            setTimeout(() => {
-                lc.style.transition = 'all .8s ease-out';
-                lc.style.opacity = '1';
-                lc.style.transform = 'translateY(0)';
-            }, 100);
+            lc.style.opacity='0'; lc.style.transform='translateY(30px)';
+            setTimeout(()=>{ lc.style.transition='all .8s ease-out'; lc.style.opacity='1'; lc.style.transform='translateY(0)'; },100);
         });
 
         /* ===== Telegram User & Referral Setup ===== */
         Telegram.WebApp.ready();
         let tgUser = null;
-        if (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+        if(Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user){
             tgUser = Telegram.WebApp.initDataUnsafe.user;
             const photoUrl = tgUser.photo_url;
-            const userName = tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '');
+            const userName = tgUser.first_name + (tgUser.last_name? ' '+tgUser.last_name:'');
             const userId = tgUser.id;
-
-            const imgEl = document.getElementById('userImage');
+            const imgEl  = document.getElementById('userImage');
             const nameEl = document.getElementById('userName');
-            const idEl = document.getElementById('userId');
+            const idEl   = document.getElementById('userId');
             const placeHolder = document.querySelector('.placeholder');
-
-            if (photoUrl) {
+            if(photoUrl){
                 imgEl.src = photoUrl;
                 imgEl.style.display = 'block';
                 placeHolder.style.display = 'none';
             }
-
             nameEl.textContent = userName;
-            idEl.textContent = 'ID: ' + userId;
+            idEl.textContent   = 'ID: ' + userId;
         }
 
         function getRefParam() {
             let referrerId = null;
             const REF_PREFIX = 'ref_';
+
             if (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.start_param) {
                 const startParam = Telegram.WebApp.initDataUnsafe.start_param;
                 if (startParam.startsWith(REF_PREFIX)) {
                     referrerId = startParam.substring(REF_PREFIX.length);
+                    console.log('Referrer ID from start_param:', referrerId);
                 }
-            }
-            return referrerId;
+            } 
+            return referrerId; 
         }
-        
-        const referrerId = getRefParam();
 
-        /* ===== API Communication with Security/Error Handling ===== */
+        let referrerId = getRefParam();
+        const API_URL = '/api'; 
+        
+        // ------------------------------------------------------------------
+        // **fetchApi Function** // ------------------------------------------------------------------
         async function fetchApi(payload) {
             if (!tgUser) {
-                Telegram.WebApp.showAlert('🚨 AUTH ERROR 🚨\n\n[STATUS] User data not available. Please restart the bot.');
-                return { ok: false, error: 'No user data' };
+                Telegram.WebApp.showAlert('🚨 Critical Error: User data not initialized. Please restart the app. [CODE: U_NIL]');
+                return { ok: false, error: 'User not initialized' };
             }
 
-            const finalPayload = {
-                ...payload,
-                initData: Telegram.WebApp.initData,
-                user_id: tgUser.id,
-            };
+            const initData = Telegram.WebApp.initData;
+            if (!initData) {
+                Telegram.WebApp.showAlert('🚨 Critical Error: Initialization data is missing. Please restart the app. [CODE: ID_MS]');
+                return { ok: false, error: 'InitData missing' };
+            }
 
             if (typeof Telegram.WebApp.showProgress === 'function') {
-                Telegram.WebApp.showProgress(false); // Show indefinite loading indicator
+                Telegram.WebApp.showProgress();
             }
-
+            
             try {
-                const response = await fetch(API_ENDPOINT, {
+                const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(finalPayload),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ...payload,
+                        user_id: tgUser.id,
+                        initData: initData 
+                    }),
                 });
 
                 if (typeof Telegram.WebApp.hideProgress === 'function') {
@@ -562,26 +555,26 @@
                 const data = await response.json();
 
                 if (!response.ok || !data.ok) {
-                    const errorMessage = data.error || response.statusText;
-                    let alertMessage = `❌ API ERROR ❌\n\n[STATUS] An unknown error occurred: ${errorMessage}`;
-
-                    if (data.data && data.data.is_banned) {
-                        alertMessage = `🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.`;
+                    const errorMessage = data.error || `Server Error: ${response.status} ${response.statusText}`;
+                    console.error(`API Call failed for type ${payload.type}:`, errorMessage);
+                    let alertMessage = `⚡️ OPERATION FAILED ⚡️\n\n[Reason] ${errorMessage}`;
+                    if (response.status === 429) {
+                         alertMessage = `🛑 RATE LIMIT EXCEEDED 🛑\n\n[ACTION REQUIRED] ${errorMessage}`;
+                    } else if (response.status === 403 && errorMessage.includes('banned')) {
+                         alertMessage = `🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.`;
                     } else if (errorMessage.includes('limit reached')) {
-                        alertMessage = `⚠️ DAILY LIMIT REACHED ⚠️\n\n[STATUS] You have reached the maximum allowed actions for today.`;
+                         alertMessage = `⚠️ DAILY LIMIT REACHED ⚠️\n\n[STATUS] You have reached the maximum allowed actions for today.`;
                     } else if (errorMessage.includes('Server Token') || response.status === 409) {
                         // ⚠️ IMPROVEMENT: Explicit message for Action ID error
                         alertMessage = `🔒 SECURITY ERROR 🔒\n\n[STATUS] Invalid or used security token. Please try again normally.`;
                     } else if (response.status === 408) {
                         alertMessage = `⏳ TIMEOUT ⏳\n\n[STATUS] Security token expired. Please try again immediately.`;
                     }
-
                     Telegram.WebApp.showAlert(alertMessage);
-                    return { ok: false, error: errorMessage, status: response.status };
+                    return { ok: false, error: errorMessage };
                 }
 
                 return data;
-
             } catch (error) {
                 if (typeof Telegram.WebApp.hideProgress === 'function') {
                     Telegram.WebApp.hideProgress();
@@ -596,98 +589,103 @@
         // NEW: Function to request Action ID from the Server
         // ------------------------------------------------------------------
         async function requestActionId(actionType) {
-            const result = await fetchApi({ type: 'generateActionId', action_type: actionType });
+            const result = await fetchApi({ 
+                type: 'generateActionId', 
+                action_type: actionType 
+            });
+            
             if (result.ok) {
                 return result.data.action_id;
             }
             return null;
         }
 
+
         /* ===== Rewards, Limits, and Anti-Cheat (Limits here are for display only) ===== */
         const DAILY_MAX = 100;
         const DAILY_MAX_SPINS = 15;
-        let shibBalance = 0;
+        
+        let shibBalance = 0; 
         let adsWatchedToday = 0;
-        let spinsToday = 0;
+        let spinsToday = 0; 
         let withdrawalHistory = [];
-        let referralsCount = 0;
-        let isBanned = false;
-        let spinning = false; // Prevents double clicking spin
+        let referralsCount = 0; 
+        let isBanned = false; 
+        
+        // Sectors are still needed for drawing the wheel segments and for prize calculation 
+        const sectors = [5, 10, 15, 20, 5]; 
 
-        // Sectors are still needed for drawing the wheel segments and for prize calculation
-        const sectors = [5, 10, 15, 20, 5];
-
-        function updateState({ balance, ads_watched_today, spins_today, referrals_count, withdrawal_history, is_banned }) {
-            shibBalance = balance !== undefined ? balance : shibBalance;
-            adsWatchedToday = ads_watched_today !== undefined ? ads_watched_today : adsWatchedToday;
-            spinsToday = spins_today !== undefined ? spins_today : spinsToday;
-            referralsCount = referrals_count !== undefined ? referrals_count : referralsCount;
-            withdrawalHistory = withdrawal_history !== undefined ? withdrawal_history : withdrawalHistory;
-            isBanned = is_banned !== undefined ? is_banned : isBanned;
+        function updateState(data) {
+            shibBalance = data.balance !== undefined ? data.balance : shibBalance;
+            adsWatchedToday = data.ads_watched_today !== undefined ? data.ads_watched_today : adsWatchedToday;
+            spinsToday = data.spins_today !== undefined ? data.spins_today : spinsToday;
+            referralsCount = data.referrals_count !== undefined ? data.referrals_count : referralsCount;
+            withdrawalHistory = data.withdrawal_history !== undefined ? data.withdrawal_history : withdrawalHistory;
+            isBanned = data.is_banned !== undefined ? data.is_banned : isBanned;
             updateUI();
         }
-
+        
         async function loadUserData() {
             if (!tgUser) return;
-            const result = await fetchApi({ type: 'getUserData' });
+            
+            const result = await fetchApi({ type: 'getUserData' }); 
+
             if (result.ok) {
                 if (result.data.is_banned) {
-                    updateState({ is_banned: true });
-                    Telegram.WebApp.showAlert(result.data.message);
+                    isBanned = true;
+                    mainScreen.classList.remove('visible');
+                    Telegram.WebApp.showAlert('🚨 ACCOUNT BANNED 🚨\n\n[STATUS] This account has been permanently restricted due to policy violations. Access to the mini app is denied.');
                     return;
                 }
+                
                 updateState({
                     balance: result.data.balance,
                     ads_watched_today: result.data.ads_watched_today,
                     spins_today: result.data.spins_today,
                     referrals_count: result.data.referrals_count,
-                    is_banned: false,
+                    is_banned: false, 
                     withdrawal_history: (result.data.withdrawal_history || []).map(item => ({
                         amount: item.amount,
                         status: item.status,
-                        date: new Date(item.created_at).toLocaleDateString('en-GB')
+                        date: new Date(item.created_at).toLocaleDateString('en-GB') 
                     }))
                 });
-                mainScreen.classList.add('visible');
+                
+                mainScreen.classList.add('visible'); 
+
             }
         }
-
-        async function initDailyProgress() {
+        
+        async function initDailyProgress(){
             if (!tgUser) return;
-            const registerResult = await fetchApi({ type: 'register', ref_by: referrerId ? referrerId : null });
+
+            const registerResult = await fetchApi({ 
+                type: 'register',
+                ref_by: referrerId ? referrerId : null 
+            });
+
             if (registerResult.ok) {
-                await loadUserData();
+                await loadUserData(); 
             }
         }
-
-        function updateUI() {
+        
+        function updateUI(){
             document.getElementById('shibBalance').textContent = shibBalance.toLocaleString() + ' SHIB';
-            // Update withdraw screen balance
-            const withdrawBalanceDisplay = document.getElementById('withdrawBalanceDisplay');
-            if(withdrawBalanceDisplay) {
-                withdrawBalanceDisplay.textContent = shibBalance.toLocaleString() + ' SHIB';
-            }
-            
+            document.getElementById('withdrawBalanceDisplay').textContent = shibBalance.toLocaleString() + ' SHIB';
+
             document.getElementById('adsCount').textContent = adsWatchedToday;
             const adsPercent = Math.min((adsWatchedToday / DAILY_MAX) * 100, 100);
             document.getElementById('dailyProgressFill').style.width = adsPercent + '%';
 
-            document.getElementById('spinsCount').textContent = spinsToday;
+            document.getElementById('spinsCount').textContent = spinsToday; 
             const spinsPercent = Math.min((spinsToday / DAILY_MAX_SPINS) * 100, 100);
             document.getElementById('spinProgressFill').style.width = spinsPercent + '%';
 
-            const referralsCountDisplay = document.getElementById('referralsCountDisplay');
-            if(referralsCountDisplay) {
-                 referralsCountDisplay.textContent = referralsCount.toLocaleString();
-            }
-
-            // Button state updates
+            document.getElementById('referralsCountDisplay').textContent = referralsCount.toLocaleString();
+            
             const adButton = document.querySelector('button[onclick="watchAds()"]');
             if (adButton) {
-                if (isBanned) {
-                    adButton.disabled = true;
-                    adButton.querySelector('span').textContent = 'BANNED';
-                } else if (adsWatchedToday >= DAILY_MAX) {
+                if (isBanned || adsWatchedToday >= DAILY_MAX) {
                     adButton.disabled = true;
                     adButton.querySelector('span').textContent = 'LIMIT REACHED';
                 } else {
@@ -698,10 +696,7 @@
 
             const spinBtn = document.getElementById('spinBtn');
             if (spinBtn) {
-                if (isBanned) {
-                    spinBtn.disabled = true;
-                    spinBtn.textContent = `BANNED`;
-                } else if (spinsToday >= DAILY_MAX_SPINS) {
+                if (isBanned || spinsToday >= DAILY_MAX_SPINS) {
                     spinBtn.disabled = true;
                     spinBtn.textContent = `LIMIT REACHED (${spinsToday}/${DAILY_MAX_SPINS})`;
                 } else if (!spinning) {
@@ -709,127 +704,293 @@
                     spinBtn.textContent = 'SPIN';
                 }
             }
-
-            // Update Withdrawal Button State
-            const withdrawBtn = document.querySelector('.withdraw-btn');
-            if (withdrawBtn) {
-                if (isBanned) {
-                    withdrawBtn.disabled = true;
-                    withdrawBtn.textContent = 'BANNED';
-                } else {
-                    withdrawBtn.disabled = false;
-                    withdrawBtn.textContent = 'Withdraw';
-                }
-            }
-
-            // If we are on the withdraw screen, update history
-            if (document.getElementById('withdrawScreen').classList.contains('visible')) {
-                 displayWithdrawals();
-            }
         }
-
-        async function watchAds() {
+        
+        async function watchAds(){
             if (isBanned) {
-                Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
-                return;
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
             }
-            if (adsWatchedToday >= DAILY_MAX) {
-                Telegram.WebApp.showAlert('⚠️ LIMIT REACHED ⚠️\n\n[STATUS] You have already watched the maximum number of ads today.');
-                return;
-            }
-
+            
             // 1. Request Action ID from the Server
             const actionId = await requestActionId('watchAd');
             if (!actionId) return; // Error message already shown by fetchApi
 
-            // 2. Call GigaPub to show the ad
-            window.showGiga() 
-            .then(async () => {
-                // 3. Request API to register the ad watch and grant reward
-                const result = await fetchApi({
-                    type: 'watchAd',
-                    action_id: actionId // Pass the required token
-                });
-
-                if (result.ok) {
-                    // 4. Update state with trusted server values
-                    updateState({
-                        balance: result.data.new_balance,
-                        ads_watched_today: result.data.new_ads_count
+            // 2. Show Ad
+            window.showGiga()
+                .then(async () => {
+                    // 3. Request ad reward from the server (Server determines reward, checks limits, and validates Action ID)
+                    const adResult = await fetchApi({
+                        type: 'watchAd',
+                        action_id: actionId // ⬅️ Send Server-Issued ID
                     });
-                    Telegram.WebApp.showAlert(`✅ REWARD GRANTED ✅\n\n[AMOUNT] +${result.data.reward} SHIB`);
-                }
-            })
-            .catch(error => {
-                console.error("GigaPub Ad failed:", error);
-                // Note: The action ID is consumed upon the initial request, 
-                // but the final reward request failed, so the ad count might not be updated 
-                // until a new day/reset, which is acceptable for anti-cheat.
-                Telegram.WebApp.showAlert('❌ AD LOAD FAIL ❌\n\n[ERROR] Failed to load advertisement. Please try again.');
-            });
-        }
 
-        function circleClick() {
-            console.log('Circle clicked');
+                    if (adResult.ok) {
+                        const actualReward = adResult.data.actual_reward; 
+                        
+                        // 4. Update UI with trusted server values
+                        updateState({
+                            balance: adResult.data.new_balance,
+                            ads_watched_today: adResult.data.new_ads_count
+                        });
+                        
+                        // 5. Referral commission logic (sends a separate commission request)
+                        if (referrerId) {
+                            fetchApi({
+                                type: 'commission',
+                                referrer_id: referrerId,
+                                referee_id: tgUser.id
+                            }).then(r => {
+                                if (r.ok) { console.log('Commission sent successfully.'); }
+                                else { console.warn('Commission failed to send:', r.error); }
+                            });
+                        }
+                        
+                        let adAlert = `🎉 REWARD GRANTED 🎉\n\n[CREDIT] Ad watched, you earned ${actualReward} SHIB.`;
+                        if(adResult.data.new_ads_count >= DAILY_MAX){
+                            adAlert = `🏆 MISSION ACCOMPLISHED 🏆\n\n[CONGRATS] You completed all ${DAILY_MAX} ads today. Come back tomorrow!`;
+                        }
+                        Telegram.WebApp.showAlert(adAlert);
+                    }
+                })
+                .catch(e => {
+                    console.error("GigaPub Ad failed to show or was dismissed:", e);
+                    Telegram.WebApp.showAlert('❌ AD LOAD FAIL ❌\n\n[ERROR] Failed to load advertisement. Please try again.');
+                });
         }
+        function circleClick(){ console.log('Circle clicked'); }
 
-        /* ===== Screen Navigation Functions ===== */
-        function hideAllScreens() {
-             document.getElementById('mainScreen').classList.remove('visible');
-             document.getElementById('spinScreen').classList.remove('visible');
-             document.getElementById('withdrawScreen').classList.remove('visible');
-             document.getElementById('inviteScreen').classList.remove('visible');
-        }
-
-        function showSpin() {
-            if (isBanned) {
-                Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
-                return;
-            }
-            hideAllScreens();
-            document.getElementById('spinScreen').classList.add('visible');
-        }
-
-        function hideSpin() {
-            document.getElementById('spinScreen').classList.remove('visible');
-            document.getElementById('mainScreen').classList.add('visible');
-            spinning = false;
-            updateUI(); // Re-enable spin button
-        }
-
-        function showWithdraw() {
-            if (isBanned) {
-                Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
-                return;
-            }
-            hideAllScreens();
-            document.getElementById('withdrawScreen').classList.add('visible');
-            displayWithdrawals(); // Load and display history when showing the screen
-        }
-
-        function hideWithdraw() {
-            document.getElementById('withdrawScreen').classList.remove('visible');
-            document.getElementById('mainScreen').classList.add('visible');
-        }
-
+        /* ===== Invite Screen Functions ===== */
+        
         function inviteFriends() {
             if (isBanned) {
-                Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
-                return;
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
             }
-            hideAllScreens();
+            mainScreen.classList.remove('visible');
             document.getElementById('inviteScreen').classList.add('visible');
             generateReferralLink();
-            loadUserData(); // To refresh referral count
+            loadUserData();
         }
 
-        function hideInvite() {
+        function hideInvite(){
             document.getElementById('inviteScreen').classList.remove('visible');
-            document.getElementById('mainScreen').classList.add('visible');
+            mainScreen.classList.add('visible');
+        }
+        
+        function generateReferralLink() {
+            const referralLinkInput = document.getElementById('referralLinkInput');
+            
+            if (!tgUser) {
+                referralLinkInput.value = 'User data not available.';
+                return;
+            }
+            
+            const userId = tgUser.id;
+            const botPath = "Game_win_usdtBot/earn"; 
+            const inviteLink = `https://t.me/${botPath}?startapp=ref_${userId}`;
+            
+            referralLinkInput.value = inviteLink;
         }
 
-        /* ===== Withdraw Screen Functions ===== */
+        function copyReferralLink() {
+            const inviteLink = document.getElementById('referralLinkInput').value;
+            
+            if (inviteLink === 'User data not available.' || inviteLink === 'Generating Link...') {
+                Telegram.WebApp.showAlert('❌ ERROR ❌\n\n[STATUS] The referral link is not ready yet. Please wait a moment.');
+                return;
+            }
 
+            navigator.clipboard.writeText(inviteLink).then(() => {
+                Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                Telegram.WebApp.showAlert('✅ LINK COPIED ✅\n\n[STATUS] Referral link copied to clipboard.');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                Telegram.WebApp.showAlert('❌ COPY FAILED ❌\n\n[ERROR] Failed to copy link. Please try again.');
+            });
+        }
+        /* ===== End of Invite Screen Functions ===== */
+
+
+        /* ===== Spin Wheel (Wheel Code) ===== */
+        const colors = ['#00bfff', '#ff8c00', '#28a745', '#ff4500', '#00f2fe'];
+        const prizeValues = sectors; 
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinResult = document.getElementById('spinResult');
+        const spinBtn    = document.getElementById('spinBtn'); 
+        let spinning = false;
+        let currentAngle = 0;
+
+        function drawWheel() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 130;
+            const sectorCount = sectors.length;
+            const arc = 2 * Math.PI / sectorCount;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            sectors.forEach((val, i) => {
+                const start = i * arc - Math.PI / 2; 
+                
+                // Draw sector background
+                ctx.beginPath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, start, start + arc);
+                ctx.closePath();
+                ctx.fill();
+
+                // Draw sector border
+                ctx.beginPath();
+                ctx.strokeStyle = '#fff'; 
+                ctx.lineWidth = 3;
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, start, start + arc);
+                ctx.closePath();
+                ctx.stroke();
+
+                // 🛠️ تم حذف الكود الذي يرسم النصوص داخل العجلة لتكون فارغة تماماً
+            });
+
+            // Draw Center Circle
+            ctx.beginPath();
+            ctx.fillStyle = '#fff';
+            ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI); 
+            ctx.fill();
+            ctx.strokeStyle = '#ff3366';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Draw Mini Circle inside
+            ctx.beginPath();
+            ctx.fillStyle = '#ff3366';
+            ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI); 
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+        }
+        drawWheel();
+
+        async function startSpin(){
+            if(spinning) return;
+            
+            if (isBanned) {
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
+            }
+            
+            if (spinsToday >= DAILY_MAX_SPINS) {
+                return;
+            }
+            
+            // 1. Request Action ID from the Server ⬅️ تم التفعيل على Spin
+            const spinActionId = await requestActionId('spin');
+            if (!spinActionId) return; // Error message already shown by fetchApi
+
+
+            // 2. Request spin attempt registration first (Server checks rate limit, daily limit, and validates Action ID)
+            const spinReqResult = await fetchApi({ 
+                type: 'spin',
+                action_id: spinActionId
+            });
+
+            if (!spinReqResult.ok) {
+                await loadUserData(); 
+                return; 
+            }
+            
+            // Update spin count with trusted server value
+            updateState({ spins_today: spinReqResult.data.new_spins_count });
+
+            // 3. Call GigaPub
+            window.showGiga()
+                .then(async () => {
+                    spinning = true;
+                    spinBtn.disabled = true;
+                    spinResult.textContent = 'Spinning...'; 
+                    
+                    // 4. Request spin result and prize addition (No second Action ID needed here, as the 'spin' action consumed the ID)
+                    const spinResultRes = await fetchApi({ 
+                        type: 'spinResult'
+                    });
+                    
+                    if (spinResultRes.ok) {
+                        const finalPrize = spinResultRes.data.actual_prize; 
+                        const prizeIndex = spinResultRes.data.prize_index !== undefined ? spinResultRes.data.prize_index : 0; 
+                        
+                        const sectorCount = sectors.length; 
+                        const arc = 2 * Math.PI / sectorCount; 
+                        
+                        const winningAngle = prizeIndex * arc + arc / 2; 
+                        
+                        let rotationToApply = Math.PI / 2 - winningAngle;
+                        
+                        rotationToApply = rotationToApply + (5 * 2 * Math.PI); 
+                        
+                        currentAngle += rotationToApply;
+
+                        canvas.style.transition = 'transform 4s cubic-bezier(0.22,0,0.2,1)';
+                        canvas.style.transform = `rotate(${currentAngle}rad)`;
+                        
+                        setTimeout(async ()=>{
+                            canvas.style.transition = 'none'; 
+                            
+                            // 5. Update balance with trusted server value 
+                            updateState({ balance: spinResultRes.data.new_balance });
+                            spinResult.textContent = `\n\n[WINNER] You won ${finalPrize} SHIB!`;
+                            
+                            await loadUserData(); 
+                            
+                        },4000); 
+
+                    } else {
+                        spinResult.textContent = `❌ ERROR ❌\n\n[STATUS] Error receiving prize. Please try again.`;
+                        await loadUserData(); 
+                    }
+                    
+                    spinning   = false;
+                    updateUI(); 
+                })
+                .catch(e => {
+                    console.error("GigaPub Ad failed to show or was dismissed:", e);
+                    Telegram.WebApp.showAlert('❌ AD LOAD FAIL ❌\n\n[STATUS] Failed to load ad. Spin was not counted. Please try again.');
+                    loadUserData(); 
+                });
+        }
+
+        /* ===== Navigation and Withdraw ===== */
+        function showSpin(){
+            if (isBanned) {
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
+            }
+            mainScreen.classList.remove('visible');
+            document.getElementById('spinScreen').classList.add('visible');
+            loadUserData();
+            updateUI(); 
+        }
+        function hideSpin(){
+            document.getElementById('spinScreen').classList.remove('visible');
+            mainScreen.classList.add('visible');
+        }
+        
+        function showWithdraw(){
+            if (isBanned) {
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
+            }
+            mainScreen.classList.remove('visible');
+            document.getElementById('withdrawScreen').classList.add('visible');
+            loadUserData();
+            displayWithdrawals(); 
+        }
+        
+        function hideWithdraw(){
+            document.getElementById('withdrawScreen').classList.remove('visible');
+            mainScreen.classList.add('visible');
+        }
+        
         function displayWithdrawals() {
             const container = document.getElementById('withdrawalHistoryContainer');
             if (!withdrawalHistory || withdrawalHistory.length === 0) {
@@ -856,29 +1017,20 @@
             container.innerHTML = tableHTML;
         }
 
-        async function requestWithdrawal() {
+        async function confirmWithdraw(){
             if (isBanned) {
-                Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
-                return;
-            }
-            const binanceId = document.getElementById('binanceId').value.trim();
-            const amount = parseFloat(document.getElementById('amount').value.trim());
-
-            // Simple client-side validation
-            if (!binanceId || binanceId.length < 8 || !/^\d+$/.test(binanceId)) { 
-                Telegram.WebApp.showAlert('⚠️ INVALID INPUT ⚠️\n\n[STATUS] Please enter a valid Binance User ID (minimum 8 digits).');
-                return;
-            }
-            if (isNaN(amount) || amount < 400) { 
-                Telegram.WebApp.showAlert('⚠️ INVALID AMOUNT ⚠️\n\n[STATUS] The minimum withdrawal amount is 400 SHIB.');
-                return;
-            }
-            if (amount > shibBalance) { 
-                Telegram.WebApp.showAlert(`❌ BALANCE ERROR ❌\n\n[STATUS] Insufficient balance. Your current balance is ${shibBalance.toLocaleString()} SHIB.`);
-                return;
+                 Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
+                 return;
             }
             
-            // 1. Request Action ID from the Server 
+            const binanceId = document.getElementById('binanceId').value.trim();
+            const amount = parseInt(document.getElementById('withdrawAmount').value);
+            
+            if(!binanceId || binanceId.length < 8){ Telegram.WebApp.showAlert('⚠️ INVALID INPUT ⚠️\n\n[STATUS] Please enter a valid Binance User ID (minimum 8 digits).'); return; }
+            if(isNaN(amount) || amount < 400){ Telegram.WebApp.showAlert('⚠️ INVALID AMOUNT ⚠️\n\n[STATUS] The minimum withdrawal amount is 400 SHIB.'); return; }
+            if(amount > shibBalance){ Telegram.WebApp.showAlert(`❌ BALANCE ERROR ❌\n\n[STATUS] Insufficient balance. Your current balance is ${shibBalance.toLocaleString()} SHIB.`); return; }
+            
+            // 1. Request Action ID from the Server ⬅️ تم التفعيل على Withdraw
             const actionId = await requestActionId('withdraw');
             if (!actionId) return;
 
@@ -900,203 +1052,6 @@
                 
                 Telegram.WebApp.showAlert(`✅ REQUEST SENT ✅\n\n[DETAILS] Binance ID: ${binanceId}\n[AMOUNT] ${amount.toLocaleString()} SHIB\n\nThe transfer will be processed within 24 hours.`);
             }
-        }
-
-        /* ===== Invite Screen Functions ===== */
-        function generateReferralLink() {
-            const referralLinkInput = document.getElementById('referralLinkInput');
-            if (!tgUser) {
-                referralLinkInput.value = 'User data not available.';
-                return;
-            }
-            const userId = tgUser.id;
-            const botPath = "Game_win_usdtBot/earn"; // Replace with your bot's username path
-            const inviteLink = `https://t.me/${botPath}?startapp=ref_${userId}`;
-            referralLinkInput.value = inviteLink;
-        }
-
-        function copyReferralLink() {
-            const inviteLink = document.getElementById('referralLinkInput').value;
-            if (inviteLink === 'User data not available.' || inviteLink === 'Generating Link...') {
-                Telegram.WebApp.showAlert('❌ ERROR ❌\n\n[STATUS] The referral link is not ready yet. Please wait a moment.');
-                return;
-            }
-            navigator.clipboard.writeText(inviteLink).then(() => {
-                Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-                Telegram.WebApp.showAlert('✅ LINK COPIED ✅\n\n[STATUS] Referral link copied to clipboard.');
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
-                Telegram.WebApp.showAlert('❌ COPY FAILED ❌\n\n[ERROR] Failed to copy link. Please try again.');
-            });
-        }
-
-        /* ===== Spin Wheel (Wheel Code) ===== */
-        const colors = ['#00bfff', '#ff8c00', '#28a745', '#ff4500', '#00f2fe'];
-        const prizeValues = sectors;
-        const canvas = document.getElementById('wheelCanvas');
-        const ctx = canvas.getContext('2d');
-        const spinResult = document.getElementById('spinResult');
-        const spinBtn = document.getElementById('spinBtn');
-        const wheelRadius = canvas.width / 2;
-        const center = wheelRadius;
-        let currentRotation = 0; // Current rotation angle in radians
-
-        function drawWheel() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(center, center);
-            ctx.rotate(currentRotation);
-
-            const sectorCount = sectors.length;
-            const arc = 2 * Math.PI / sectorCount;
-
-            for (let i = 0; i < sectorCount; i++) {
-                const angle = i * arc;
-                ctx.beginPath();
-                ctx.arc(0, 0, wheelRadius, angle, angle + arc);
-                ctx.lineTo(0, 0);
-                ctx.closePath();
-                ctx.fillStyle = colors[i % colors.length];
-                ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                // Draw Text
-                ctx.save();
-                ctx.rotate(angle + arc / 2);
-                ctx.textAlign = 'right';
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 16px Vazirmatn';
-                ctx.shadowColor = 'rgba(0,0,0,0.5)';
-                ctx.shadowBlur = 4;
-                ctx.fillText(sectors[i].toString() + ' SHIB', wheelRadius * 0.9, 8);
-                ctx.restore();
-            }
-
-            ctx.restore();
-
-            // Draw center circle
-            ctx.beginPath();
-            ctx.arc(center, center, 15, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ff3366';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 3;
-            ctx.stroke();
-        }
-
-        drawWheel();
-
-        async function startSpin() {
-            if (spinning) return;
-            if (isBanned) {
-                Telegram.WebApp.showAlert('🚨 ACCESS DENIED 🚨\n\n[STATUS] This user account has been banned.');
-                return;
-            }
-            if (spinsToday >= DAILY_MAX_SPINS) {
-                return;
-            }
-
-            // 1. Request Action ID for the spin attempt
-            const spinActionId = await requestActionId('spin');
-            if (!spinActionId) return; // Error message already shown by fetchApi
-
-            // 2. Request spin attempt registration first (Server consumes Action ID 'spin' and returns Action ID 'spinResult')
-            const spinReqResult = await fetchApi({ type: 'spin', action_id: spinActionId });
-            if (!spinReqResult.ok) { 
-                await loadUserData(); 
-                return; 
-            }
-
-            // ⬅️ MODIFIED: Capture the Action ID for the next step (spinResult)
-            const spinResultActionId = spinReqResult.data.spin_result_action_id; 
-            if (!spinResultActionId) {
-                Telegram.WebApp.showAlert('❌ SECURITY ERROR ❌\n\n[STATUS] Server failed to issue security token for prize.');
-                await loadUserData(); 
-                return;
-            }
-
-            // Update spin count with trusted server value
-            updateState({ spins_today: spinReqResult.data.new_spins_count });
-
-            // 3. Call GigaPub window.showGiga()
-            window.showGiga() 
-            .then(async () => {
-                spinning = true;
-                spinBtn.disabled = true;
-                spinResult.textContent = 'Spinning...';
-
-                // 4. Request spin result and prize addition (Pass the new Action ID) ⬅️ MODIFIED
-                const spinResultRes = await fetchApi({ 
-                    type: 'spinResult',
-                    action_id: spinResultActionId // ⬅️ NEW: Pass the required token
-                });
-
-                if (spinResultRes.ok) {
-                    const finalPrize = spinResultRes.data.actual_prize;
-                    const prizeIndex = spinResultRes.data.prize_index !== undefined ? spinResultRes.data.prize_index : 0;
-
-                    // Calculate rotation for animation
-                    const sectorCount = sectors.length;
-                    const arc = 2 * Math.PI / sectorCount;
-                    // Angle to center of the winning sector (needs to align with the top arrow)
-                    const winningAngle = prizeIndex * arc + arc / 2; 
-
-                    // We want the rotation to end at 90 degrees (PI/2) minus the winning angle
-                    // Add several full rotations (e.g., 5 full rotations) to make it visually engaging
-                    let rotationToApply = Math.PI / 2 - winningAngle;
-                    rotationToApply = rotationToApply + (5 * 2 * Math.PI); 
-
-                    // Animation logic
-                    const startRotation = currentRotation;
-                    const endRotation = startRotation + rotationToApply;
-                    const duration = 4000; // 4 seconds
-                    const startTime = Date.now();
-
-                    function animate() {
-                        const elapsed = Date.now() - startTime;
-                        const progress = elapsed / duration;
-                        
-                        if (progress < 1) {
-                            // Use a smooth easing function (e.g., ease-out cubic)
-                            const easedProgress = 1 - Math.pow(1 - progress, 3);
-                            currentRotation = startRotation + (endRotation - startRotation) * easedProgress;
-                            drawWheel();
-                            requestAnimationFrame(animate);
-                        } else {
-                            currentRotation = endRotation % (2 * Math.PI);
-                            drawWheel();
-                            
-                            // Final state update and message
-                            updateState({ balance: spinResultRes.data.new_balance });
-                            spinResult.textContent = `🎉 You Won ${finalPrize} SHIB! 🎉`;
-                            Telegram.WebApp.showAlert(`✅ SPIN WIN! ✅\n\n[AMOUNT] +${finalPrize} SHIB`);
-                            
-                            spinning = false;
-                            updateUI(); // Re-enable button
-                        }
-                    }
-
-                    animate();
-                } else {
-                    spinning = false;
-                    updateUI(); // Re-enable button
-                    spinResult.textContent = 'Spin failed. Try again.';
-                }
-            })
-            .catch(error => {
-                console.error("GigaPub Ad failed for spin:", error);
-                spinning = false;
-                updateUI(); // Re-enable button
-                Telegram.WebApp.showAlert('❌ AD LOAD FAIL ❌\n\n[ERROR] Failed to load advertisement. Please try again.');
-                spinResult.textContent = 'Ad failed. Try again.';
-            });
-        }
-        
-        // Initial setup on load (for progress bar hiding)
-        if (!Telegram.WebApp.initDataUnsafe || !Telegram.WebApp.initDataUnsafe.user) {
-             loadingScreen.classList.remove('hidden');
         }
     </script>
 </body>
