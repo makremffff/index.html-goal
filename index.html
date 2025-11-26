@@ -569,6 +569,8 @@ You will earn 5% of the revenue from every referral you bring through ads!
                         alertMessage = `🔒 SECURITY ERROR 🔒\n\n[STATUS] Invalid or used security token. Please try again normally.`;
                     } else if (response.status === 408) {
                         alertMessage = `⏳ TIMEOUT ⏳\n\n[STATUS] Security token expired. Please try again immediately.`;
+                    } else if (errorMessage.includes('Spin Result Not Found')) { // Added for the new spin logic
+                        alertMessage = `❌ CRITICAL ERROR ❌\n\n[STATUS] Spin result was not registered. Please try spinning again.`;
                     }
                     Telegram.WebApp.showAlert(alertMessage);
                     return { ok: false, error: errorMessage };
@@ -884,7 +886,7 @@ You will earn 5% of the revenue from every referral you bring through ads!
                 return;
             }
             
-            // 1. Request Action ID from the Server ⬅️ تم التفعيل على Spin
+            // 1. Request Action ID from the Server 
             const spinActionId = await requestActionId('spin');
             if (!spinActionId) return; // Error message already shown by fetchApi
 
@@ -903,6 +905,10 @@ You will earn 5% of the revenue from every referral you bring through ads!
             // Update spin count with trusted server value
             updateState({ spins_today: spinReqResult.data.new_spins_count });
 
+            // Store the result data for use after the ad
+            const prizeIndex = spinReqResult.data.prize_index;
+            const finalPrize = spinReqResult.data.actual_prize;
+
             // 3. Call GigaPub
             window.showGiga()
                 .then(async () => {
@@ -910,14 +916,12 @@ You will earn 5% of the revenue from every referral you bring through ads!
                     spinBtn.disabled = true;
                     spinResult.textContent = 'Spinning...'; 
                     
-                    // 4. Request spin result and prize addition (No second Action ID needed here, as the 'spin' action consumed the ID)
+                    // 4. Request spin result and prize addition 
                     const spinResultRes = await fetchApi({ 
-                        type: 'spinResult'
+                        type: 'spinResult' // The server will automatically look up the prize saved by 'spin'
                     });
                     
                     if (spinResultRes.ok) {
-                        const finalPrize = spinResultRes.data.actual_prize; 
-                        const prizeIndex = spinResultRes.data.prize_index !== undefined ? spinResultRes.data.prize_index : 0; 
                         
                         const sectorCount = sectors.length; 
                         const arc = 2 * Math.PI / sectorCount; 
@@ -955,6 +959,8 @@ You will earn 5% of the revenue from every referral you bring through ads!
                 .catch(e => {
                     console.error("GigaPub Ad failed to show or was dismissed:", e);
                     Telegram.WebApp.showAlert('❌ AD LOAD FAIL ❌\n\n[STATUS] Failed to load ad. Spin was not counted. Please try again.');
+                    // If ad fails, we should not have awarded the prize. 
+                    // The server ensures this by checking if the spin result has been consumed.
                     loadUserData(); 
                 });
         }
