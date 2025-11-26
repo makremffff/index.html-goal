@@ -433,8 +433,7 @@ async function handleWatchAd(req, res, body) {
         // 4. Rate Limit Check (NEW)
         const rateLimitResult = await checkRateLimit(id);
         if (!rateLimitResult.ok) {
-            // Re-insert the action ID if rate limit is hit, so client can retry
-            // NOTE: For simplicity, we just send the error and the client will request a new one
+            // NOTE: Action ID was already consumed. For a rate limit error, the client should get a new Action ID.
             return sendError(res, rateLimitResult.message, 429); 
         }
 
@@ -540,6 +539,7 @@ async function handleSpin(req, res, body) {
         // 4. Rate Limit Check (NEW)
         const rateLimitResult = await checkRateLimit(id);
         if (!rateLimitResult.ok) {
+            // NOTE: Action ID was already consumed. For a rate limit error, the client should get a new Action ID.
             return sendError(res, rateLimitResult.message, 429); 
         }
 
@@ -550,6 +550,7 @@ async function handleSpin(req, res, body) {
 
         // 6. Calculate new values
         const newSpinsCount = user.spins_today + 1;
+        const { prize, prizeIndex } = calculateRandomSpinPrize(); // ⬅️ Calculate prize here
 
         // 7. Update user record: spins_today, and last_activity
         await supabaseFetch('users', 'PATCH',
@@ -558,9 +559,22 @@ async function handleSpin(req, res, body) {
               last_activity: new Date().toISOString()
           },
           `?id=eq.${id}`);
+
+        // 8. **SECURITY IMPROVEMENT: Save the prize to a temporary table**
+        await supabaseFetch('temp_spin_results', 'POST',
+            { 
+                user_id: id, 
+                prize_amount: prize, 
+                prize_index: prizeIndex 
+            },
+            '?select=user_id');
           
-        // 8. Success
-        sendSuccess(res, { new_spins_count: newSpinsCount });
+        // 9. Success: Return prize details to the client for animation, but NOT for balance update
+        sendSuccess(res, { 
+            new_spins_count: newSpinsCount, 
+            actual_prize: prize, 
+            prize_index: prizeIndex 
+        });
 
     } catch (error) {
         console.error('Spin failed:', error.message);
@@ -569,19 +583,34 @@ async function handleSpin(req, res, body) {
 }
 
 /**
- * 5) type: "spinResult" (no Action ID needed here as 'spin' was the critical step)
+ * 5) type: "spinResult" (consumes the saved prize and updates balance)
  */
 async function handleSpinResult(req, res, body) {
     const { user_id } = body;
     const id = parseInt(user_id);
     
-    // NOTE: The 'spin' action already consumed a unique ID and incremented the spin count.
-    // This action only calculates the prize and updates the balance.
-
-    const { prize, prizeIndex } = calculateRandomSpinPrize();
+    // 1. Fetch and Consume the saved prize (Security Check for spinResult)
+    let tempResults;
+    try {
+        const query = `?user_id=eq.${id}&select=id,prize_amount,prize_index&order=created_at.desc&limit=1`;
+        tempResults = await supabaseFetch('temp_spin_results', 'GET', null, query);
+    
+        if (!Array.isArray(tempResults) || tempResults.length === 0) {
+            return sendError(res, 'Spin Result Not Found (TSR_NF).', 404);
+        }
+        
+        // Delete the record immediately to prevent reuse (The actual consumption)
+        await supabaseFetch('temp_spin_results', 'DELETE', null, `?id=eq.${tempResults[0].id}`);
+    
+    } catch (error) {
+        console.error('Error fetching or deleting temp_spin_results:', error.message);
+        return sendError(res, 'Failed to validate spin result.', 500);
+    }
+    
+    const { prize_amount: prize } = tempResults[0];
 
     try {
-        // 1. Fetch current user balance and banned status
+        // 2. Fetch current user balance and banned status
         const users = await supabaseFetch('users', 'GET', null, `?id=eq.${id}&select=balance,is_banned`);
         if (!Array.isArray(users) || users.length === 0) {
             return sendError(res, 'User not found.', 404);
@@ -594,18 +623,18 @@ async function handleSpinResult(req, res, body) {
 
         const newBalance = users[0].balance + prize;
 
-        // 2. Update user record: balance 
+        // 3. Update user record: balance 
         await supabaseFetch('users', 'PATCH',
           { balance: newBalance },
           `?id=eq.${id}`);
 
-        // 3. Save to spin_results
+        // 4. Save to spin_results history
         await supabaseFetch('spin_results', 'POST',
           { user_id: id, prize },
           '?select=user_id');
 
-        // 4. Return the actual, server-calculated prize and index
-        sendSuccess(res, { new_balance: newBalance, actual_prize: prize, prize_index: prizeIndex });
+        // 5. Return the actual, server-calculated prize and index
+        sendSuccess(res, { new_balance: newBalance, actual_prize: prize });
 
     } catch (error) {
         console.error('Spin result failed:', error.message);
