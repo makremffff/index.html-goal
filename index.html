@@ -569,8 +569,6 @@ You will earn 5% of the revenue from every referral you bring through ads!
                         alertMessage = `🔒 SECURITY ERROR 🔒\n\n[STATUS] Invalid or used security token. Please try again normally.`;
                     } else if (response.status === 408) {
                         alertMessage = `⏳ TIMEOUT ⏳\n\n[STATUS] Security token expired. Please try again immediately.`;
-                    } else if (errorMessage.includes('Spin Result Not Found')) { // Added for the new spin logic
-                        alertMessage = `❌ CRITICAL ERROR ❌\n\n[STATUS] Spin result was not registered. Please try spinning again.`;
                     }
                     Telegram.WebApp.showAlert(alertMessage);
                     return { ok: false, error: errorMessage };
@@ -886,42 +884,46 @@ You will earn 5% of the revenue from every referral you bring through ads!
                 return;
             }
             
-            // 1. Request Action ID from the Server 
-            const spinActionId = await requestActionId('spin');
-            if (!spinActionId) return; // Error message already shown by fetchApi
+            // 1. Request Action ID from the Server for pre-spin (security check)
+            const preSpinActionId = await requestActionId('preSpin');
+            if (!preSpinActionId) return; // Error message already shown by fetchApi
 
 
-            // 2. Request spin attempt registration first (Server checks rate limit, daily limit, and validates Action ID)
-            const spinReqResult = await fetchApi({ 
-                type: 'spin',
-                action_id: spinActionId
+            // 2. Request pre-spin registration (Server checks for banned user and consumes the action ID)
+            const preSpinReqResult = await fetchApi({ 
+                type: 'preSpin',
+                action_id: preSpinActionId // ⬅️ Send Action ID
             });
 
-            if (!spinReqResult.ok) {
+            if (!preSpinReqResult.ok) {
                 await loadUserData(); 
                 return; 
             }
             
-            // Update spin count with trusted server value
-            updateState({ spins_today: spinReqResult.data.new_spins_count });
-
-            // Store the result data for use after the ad
-            const prizeIndex = spinReqResult.data.prize_index;
-            const finalPrize = spinReqResult.data.actual_prize;
-
-            // 3. Call GigaPub
+            // 3. Request Action ID from the Server for the spin result (prize confirmation)
+            const spinResultActionId = await requestActionId('spinResult');
+            if (!spinResultActionId) {
+                Telegram.WebApp.showAlert('🔒 SECURITY ERROR 🔒\n\n[STATUS] Failed to get confirmation token. Please try again.');
+                await loadUserData(); 
+                return;
+            }
+            
+            // 4. Call GigaPub
             window.showGiga()
                 .then(async () => {
                     spinning = true;
                     spinBtn.disabled = true;
                     spinResult.textContent = 'Spinning...'; 
                     
-                    // 4. Request spin result and prize addition 
+                    // 5. Request spin result and prize addition (Server runs limits, Rate Limit, and validates Action ID)
                     const spinResultRes = await fetchApi({ 
-                        type: 'spinResult' // The server will automatically look up the prize saved by 'spin'
+                        type: 'spinResult',
+                        action_id: spinResultActionId // ⬅️ Send Action ID
                     });
                     
                     if (spinResultRes.ok) {
+                        const finalPrize = spinResultRes.data.actual_prize; 
+                        const prizeIndex = spinResultRes.data.prize_index !== undefined ? spinResultRes.data.prize_index : 0; 
                         
                         const sectorCount = sectors.length; 
                         const arc = 2 * Math.PI / sectorCount; 
@@ -940,9 +942,13 @@ You will earn 5% of the revenue from every referral you bring through ads!
                         setTimeout(async ()=>{
                             canvas.style.transition = 'none'; 
                             
-                            // 5. Update balance with trusted server value 
-                            updateState({ balance: spinResultRes.data.new_balance });
-                            spinResult.textContent = `\n\n[WINNER] You won ${finalPrize} SHIB!`;
+                            // 6. Update balance and spin count with trusted server values 
+                            updateState({ 
+                                balance: spinResultRes.data.new_balance,
+                                spins_today: spinResultRes.data.new_spins_count
+                            });
+                            
+                            spinResult.textContent = `🎉 REWARD GRANTED 🎉\n\n[WINNER] You won ${finalPrize} SHIB!`;
                             
                             await loadUserData(); 
                             
@@ -959,8 +965,6 @@ You will earn 5% of the revenue from every referral you bring through ads!
                 .catch(e => {
                     console.error("GigaPub Ad failed to show or was dismissed:", e);
                     Telegram.WebApp.showAlert('❌ AD LOAD FAIL ❌\n\n[STATUS] Failed to load ad. Spin was not counted. Please try again.');
-                    // If ad fails, we should not have awarded the prize. 
-                    // The server ensures this by checking if the spin result has been consumed.
                     loadUserData(); 
                 });
         }
@@ -1009,7 +1013,7 @@ You will earn 5% of the revenue from every referral you bring through ads!
             tableHTML += '<tbody>';
 
             withdrawalHistory.forEach(record => {
-                const statusClass = record.status === 'Pending' ? 'status-pending' : 'status-completed';
+                const statusClass = record.status === 'pending' ? 'status-pending' : 'status-completed';
                 tableHTML += `
                     <tr>
                         <td>${record.date}</td>
